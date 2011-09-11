@@ -1,0 +1,8 @@
+game
+server
+test
+*.o
+*.a
+*~
+.sconsign.dblite
+.scons-option-cache
