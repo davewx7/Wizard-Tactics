@@ -1,4 +1,5 @@
 game
+client
 server
 test
 *.o
