@@ -361,15 +361,12 @@ class card_info_callable : public resolve_card_info
 
 	variant get_value(const std::string& key) const {
 		if(key == "caster") {
-			const int caster_key = msg_.attr("caster").to_int();
-			foreach(unit_ptr u, g_.units()) {
-				if(u->key() == caster_key) {
-					return variant(u.get());
-				}
+			unit_ptr u = caster();
+			if(u.get() != NULL) {
+				return variant(u.get());
+			} else {
+				return variant();
 			}
-
-			return variant();
-
 		} else if(key == "target") {
 			const simple_wml::node* t = msg_.child("target");
 			if(t) {
@@ -382,6 +379,8 @@ class card_info_callable : public resolve_card_info
 			}
 
 			return variant(&v);
+		} else if(key == "game") {
+			return variant(&g_);
 		}
 
 		return variant();
@@ -395,6 +394,18 @@ class card_info_callable : public resolve_card_info
 		}
 
 		return v;
+	}
+
+	unit_ptr caster() const
+	{
+		const int caster_key = msg_.attr("caster").to_int();
+		foreach(unit_ptr u, g_.units()) {
+			if(u->key() == caster_key) {
+				return u;
+			}
+		}
+
+		return unit_ptr();
 	}
 
 public:
@@ -451,8 +462,8 @@ void game::capture_tower(const hex::location& loc, unit_ptr u)
 	} else {
 		for(int n = 0; n != players_.size(); ++n) {
 			if(n != nplayer) {
-				if(players_[nplayer].towers.count(loc)) {
-					players_[nplayer].towers.erase(loc);
+				if(players_[n].towers.count(loc)) {
+					players_[n].towers.erase(loc);
 					is_tower = true;
 					break;
 				}
@@ -513,16 +524,20 @@ void game::setup_game()
 
 			const char* type = TerrainTypes[rand()%(sizeof(TerrainTypes)/sizeof(*TerrainTypes))];
 
-			if(rand()%32 == 0) {
+			if(loc == hex::location(2, 8) || loc == hex::location(12, 8)) {
+				//pass.
+			} else if(rand()%24 == 0) {
 				type = "tower";
 				neutral_towers_.insert(loc);
+			} else if(rand()%16 == 0) {
+				type = "rock";
 			}
 			tiles_.push_back(tile(x, y, type));
 		}
 	}
 
 	units_.push_back(unit::build_from_prototype("wizard", 0, hex::location(2, 8)));
-	units_.push_back(unit::build_from_prototype("wizard", 1, hex::location(5, 8)));
+	units_.push_back(unit::build_from_prototype("wizard", 1, hex::location(12, 8)));
 
 	if(players_.size() > 0) {
 		players_[0].castle = hex::location(1, 14);
@@ -656,9 +671,46 @@ void game::resolve_combat()
 	units_.erase(std::remove(units_.begin(), units_.end(), unit_ptr()), units_.end());
 }
 
+namespace {
+using namespace game_logic;
+class player_callable : public formula_callable
+{
+	game::player& player_;
+public:
+	explicit player_callable(game::player& p) : player_(p)
+	{}
+
+	variant get_value(const std::string& key) const {
+		for(int n = 0; n != resource::num_resources(); ++n) {
+			if(key == resource::resource_name(n)) {
+				return variant(player_.resources[n]);
+			}
+		}
+
+		return variant();
+	}
+
+	void set_value(const std::string& key, const variant& v) {
+		for(int n = 0; n != resource::num_resources(); ++n) {
+			if(key == resource::resource_name(n)) {
+				player_.resources[n] = v.as_int();
+				return;
+			}
+		}
+	}
+};
+}
+
 variant game::get_value(const std::string& key) const
 {
-	if(key == "tiles") {
+	if(key == "players") {
+		std::vector<variant> v;
+		for(int n = 0; n != players_.size(); ++n) {
+			v.push_back(variant(new player_callable(const_cast<player&>(players_[n]))));
+		}
+
+		return variant(&v);
+	} else if(key == "tiles") {
 		std::vector<variant> v;
 		foreach(const tile& t, tiles_) {
 			v.push_back(variant(new tile_object(t)));

@@ -4,6 +4,7 @@
 #include "draw_number.hpp"
 #include "draw_utils.hpp"
 #include "game.hpp"
+#include "gui_section.hpp"
 #include "hex_geometry.hpp"
 #include "raster.hpp"
 #include "unit_animation.hpp"
@@ -72,10 +73,11 @@ unit_avatar::unit_avatar(unit_ptr u)
 
 void unit_avatar::draw(int time) const
 {
-	draw_arrow(arrow_);
 	int x = tile_center_x(unit_->loc());
 	int y = tile_center_y(unit_->loc());
 	if(path_.empty() == false) {
+		//TODO: make arrows work nicely.
+		//draw_arrow(arrow_);
 		const hex::location a = path_.back();
 		const hex::location b = path_.size() > 1 ? path_[path_.size()-2] : path_.back();
 
@@ -90,33 +92,41 @@ void unit_avatar::draw(int time) const
 
 void unit_avatar::draw(int x, int y, int time) const
 {
+	const bool face_left = unit_->side()&1;
 	foreach(const std::string& overlay, unit_->underlays()) {
 		const unit_animation* anim = unit_overlay::get(overlay);
 		if(anim != NULL) {
-			anim->team_animation(0).draw(x, y);
+			anim->team_animation(0).draw(x, y, 0, face_left);
 		}
 	}
 
-	anim_->standing->draw(x, y, anim_->standing->length() == 0 ? 0 : (time%anim_->standing->length()));
+	anim_->standing->draw(x, y, anim_->standing->length() == 0 ? 0 : (time%anim_->standing->length()), face_left);
 
 	foreach(const std::string& overlay, unit_->overlays()) {
 		const unit_animation* anim = unit_overlay::get(overlay);
 		if(anim != NULL) {
-			anim->team_animation(0).draw(x, y);
+			anim->team_animation(0).draw(x, y, 0, face_left);
 		}
 	}
 
 	static const graphics::texture tired = graphics::texture::get("tired.png");
 
 	if(unit_->has_moved()) {
-		graphics::blit_texture(tired, x - 50, y - 30, tired.width()*2, tired.height()*2);
+		graphics::blit_texture(tired, x - (face_left ? 20 : 50), y - 36, tired.width()*2, tired.height()*2);
 	}
 
-	draw_hitpoints(x - 30, y - 20, unit_->life() - unit_->damage_taken(), unit_->life());
+	draw_hitpoints(x + (face_left ? 22 : -30), y - 20, unit_->life() - unit_->damage_taken(), unit_->life());
 
-	const int armor = unit_protection(*game::current(), unit_);
-	if(armor > 0) {
-		draw_number(armor, 2, 4, x - 10, y + 10);
+	int armor = unit_protection(*game::current(), unit_);
+	if(armor != 0) {
+		const_gui_section_ptr section = gui_section::get(armor > 0 ? "defense-icon" : "vulnerable-icon");
+		if(armor < 0) {
+			armor = -armor;
+		}
+
+		for(int n = 0; n != armor; ++n) {
+			section->blit(x - 24, y - 10 + n*6, section->width()/2, section->height()/2);
+		}
 	}
 }
 

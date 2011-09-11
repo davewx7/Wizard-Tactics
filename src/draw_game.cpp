@@ -27,7 +27,7 @@ void draw_tile(const client_play_game& info, const game& g, int xpos, int ypos, 
 
 	graphics::blit_texture(texture,
 	   xpos + tile_pixel_x(loc) + HexWidth/2 - area.w(),
-	   ypos + tile_pixel_y(loc) + HexHeight/2 - area.h(),
+	   ypos + tile_pixel_y(loc) + HexHeight - area.h()*2,
 	   area.w()*2, area.h()*2, 0, x1, y1, x2, y2);
 
 	if(selected) {
@@ -35,7 +35,7 @@ void draw_tile(const client_play_game& info, const game& g, int xpos, int ypos, 
 		glColor4f(1.0, 1.0, 1.0, 0.7 + sin(SDL_GetTicks()/250.0)*0.3);
 		graphics::blit_texture(texture,
 		   xpos + tile_pixel_x(loc) + HexWidth/2 - area.w(),
-		   ypos + tile_pixel_y(loc) + HexHeight/2 - area.h(),
+		   ypos + tile_pixel_y(loc) + HexHeight - area.h()*2,
 		   area.w()*2, area.h()*2, 0, x1, y1, x2, y2);
 
 		glColor4f(1.0, 1.0, 1.0, 1.0);
@@ -53,8 +53,8 @@ void draw_map(const client_play_game& info, const game& g, int xpos, int ypos)
 
 	const hex::location selected = info.selected_loc();
 
-	for(int x = 0; x != g.width(); ++x) {
-		for(int y = 0; y != g.height(); ++y) {
+	for(int y = 0; y != g.height(); ++y) {
+		for(int x = 0; x != g.width(); ++x) {
 			const tile* t = g.get_tile(x, y);
 			if(!t) {
 				continue;
@@ -85,8 +85,8 @@ void draw_map(const client_play_game& info, const game& g, int xpos, int ypos)
 		}
 	}
 
-	for(int x = 0; x != g.width(); ++x) {
-		for(int y = 0; y != g.height(); ++y) {
+	for(int y = 0; y != g.height(); ++y) {
+		for(int x = 0; x != g.width(); ++x) {
 			const tile* t = g.get_tile(x, y);
 			if(!t) {
 				continue;

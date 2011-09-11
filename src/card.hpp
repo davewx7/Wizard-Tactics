@@ -37,6 +37,7 @@ protected:
 class resolve_card_info : public game_logic::formula_callable
 {
 public:
+	virtual unit_ptr caster() const = 0;
 	virtual std::vector<hex::location> targets() const = 0;
 protected:
 	~resolve_card_info() {}
@@ -69,8 +70,10 @@ public:
 	virtual bool calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const;
 
 	virtual void resolve_card(const resolve_card_info* callable=NULL) const;
-private:
+
+protected:
 	void handle_event(const std::string& name, const game_logic::formula_callable* callable=NULL) const;
+private:
 	virtual wml::node_ptr play_card(card_selector& client) const = 0;
 	std::string id_, name_;
 	boost::shared_ptr<std::string> description_;
@@ -92,5 +95,7 @@ struct held_card {
 
 std::vector<held_card> read_deck(const std::string& str);
 std::string write_deck(const std::vector<held_card>& cards);
+
+bool is_valid_summoning_hex(const game* g, int player, const hex::location& loc, const_unit_ptr proto);
 
 #endif

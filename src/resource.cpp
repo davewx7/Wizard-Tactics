@@ -13,6 +13,20 @@ char resource_id(int n) {
 	return ResourceStr[n];
 }
 
+const char* resource_name(int n)
+{
+	const char* ResourceNames[] = {
+		"gold",
+		"food",
+		"blood",
+		"scrolls",
+		"honor",
+		"z",
+	};
+
+	return ResourceNames[n];
+}
+
 const char* resource_icon(int n)
 {
 	const char* ResourceIcons[] = {

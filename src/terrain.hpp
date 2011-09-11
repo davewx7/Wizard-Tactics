@@ -25,6 +25,7 @@ public:
 	const std::string& resource() const { return resource_; }
 	int resource_id() const { return resource_id_; }
 	int calculate_production_value() const;
+
 private:
 	std::string id_, resource_;
 

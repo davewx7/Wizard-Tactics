@@ -72,10 +72,12 @@ public:
 
 	const movement_type& move_type() const { return *move_type_; }
 
-	bool can_summon() const { return can_summon_; }
+	bool can_cast(char resource_type) const;
+	bool can_summon(char resource_type) const;
 	bool can_produce() const { return can_produce_; }
 
 	const std::vector<unit_ability_ptr>& abilities() const { return abilities_; }
+	unit_ability_ptr default_ability() const;
 
 	void add_modification(const modification& mod);
 private:
@@ -105,7 +107,8 @@ private:
 
 	const_movement_type_ptr move_type_;
 
-	bool can_summon_, can_produce_;
+	std::string can_summon_, can_cast_;
+	bool can_produce_;
 
 	std::vector<unit_ability_ptr> abilities_;
 };

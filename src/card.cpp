@@ -17,6 +17,7 @@
 #include "string_utils.hpp"
 #include "terrain.hpp"
 #include "tile_logic.hpp"
+#include "unit_utils.hpp"
 #include "wml_node.hpp"
 #include "wml_parser.hpp"
 #include "wml_utils.hpp"
@@ -186,6 +187,10 @@ bool is_void(const game* g, const hex::location loc) {
 bool is_loc_in_vector(const hex::location loc, const std::vector<hex::location>& v) {
 	return std::find(v.begin(), v.end(), loc) != v.end();
 }
+
+bool is_loc_in_sorted_vector(const hex::location& loc, const std::vector<hex::location>& v) {
+	return std::binary_search(v.begin(), v.end(), loc);
+}
 }
 
 wml::node_ptr land_card::play_card(card_selector& client) const
@@ -233,6 +238,7 @@ wml::node_ptr land_card::play_card(card_selector& client) const
 
 namespace {
 bool true_loc(const hex::location& loc) { return true; }
+
 }
 
 class attack_card : public card {
@@ -242,6 +248,7 @@ public:
 	virtual wml::node_ptr play_card(card_selector& client) const;
 	virtual void resolve_card(const resolve_card_info* callable=NULL) const;
 	virtual bool calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const;
+	int damage() const { return damage_; }
 private:
 	int damage_, range_;
 
@@ -269,15 +276,75 @@ wml::node_ptr attack_card::play_card(card_selector& client) const
 	return result;
 }
 
+namespace {
+
+class attack_card_callable : public game_logic::formula_callable
+{
+public:
+	explicit attack_card_callable(int dmg, int def) : damage_(dmg), defense_(def)
+	{}
+
+	variant get_value(const std::string& key) const {
+		if(key == "damage") {
+			return variant(damage_);
+		} else if(key == "defense") {
+			return variant(defense_);
+		} else {
+			return variant();
+		}
+	}
+
+	void set_value(const std::string& key, const variant& value) {
+		if(key == "damage") {
+			damage_ = value.as_int();
+		} else if(key == "defense") {
+			defense_ = value.as_int();
+		}
+	}
+
+	int damage() const { return damage_; }
+	int defense() const { return defense_; }
+
+private:
+	int damage_;
+	int defense_;
+};
+
+}
+
 void attack_card::resolve_card(const resolve_card_info* callable) const
 {
 	card::resolve_card(callable);
 
 	if(callable) {
+		using namespace game_logic;
+		map_formula_callable_ptr map_callable(new map_formula_callable(callable));
+
 		const std::vector<hex::location> targets = callable->targets();
 		foreach(const hex::location& target, targets) {
 			unit_ptr u = game::current()->get_unit_at(target);
-			u->take_damage(damage_);
+			if(u.get() != NULL) {
+
+				const int defense = unit_protection(*game::current(), u);
+
+				attack_card_callable* attack_callable = new attack_card_callable(damage_, defense);
+				variant attack_callable_var(attack_callable);
+				map_callable->add("attack", attack_callable_var);
+
+				handle_event("attack", map_callable.get());
+
+
+				int final_damage = attack_callable->damage() - attack_callable->defense();
+				if(final_damage <= 0) {
+					if(attack_callable->damage() > 0) {
+						final_damage = 1;
+					} else {
+						final_damage = 0;
+					}
+				}
+
+				u->take_damage(final_damage);
+			}
 		}
 	}
 }
@@ -307,6 +374,7 @@ public:
 private:
 	int damage_;
 	int ntargets_;
+	int range_;
 	unit::modification mod_;
 
 };
@@ -315,6 +383,7 @@ modification_card::modification_card(wml::const_node_ptr node)
   : card(node),
     damage_(wml::get_int(node, "damage")),
     ntargets_(wml::get_int(node, "targets")),
+	range_(wml::get_int(node, "range", -1)),
 	mod_(node)
 {
 }
@@ -324,9 +393,38 @@ wml::node_ptr modification_card::play_card(card_selector& client) const
 	wml::node_ptr result(new wml::node("play"));
 	result->set_attr("spell", id());
 
+	boost::function<bool(const hex::location)> valid_target_fn = true_loc;
+
+	std::vector<hex::location> valid_targets;
+	if(range_ > 0) {
+		foreach(const_unit_ptr u, client.get_game().units()) {
+			if(u->side() == client.player_id()) {
+				bool can_cast = true;
+				for(int n = 0; n != resource::num_resources(); ++n) {
+					if(cost(n) && !u->can_cast(resource::resource_id(n))) {
+						can_cast = false;
+						break;
+					}
+				}
+
+				if(can_cast) {
+					hex::get_tiles_in_radius(u->loc(), range_, valid_targets);
+				}
+			}
+		}
+
+		std::sort(valid_targets.begin(), valid_targets.end());
+		valid_targets.erase(
+		       std::unique(valid_targets.begin(),
+		                   valid_targets.end()), valid_targets.end());
+
+		valid_target_fn = boost::bind(is_loc_in_sorted_vector, _1, valid_targets);
+	}
+
+
 	for(int n = 0; n < ntargets_; ++n) {
 		const hex::location loc =
-		    client.player_select_loc("Select target for spell", true_loc);
+		    client.player_select_loc("Select target for spell", valid_target_fn);
 		if(!loc.valid()) {
 			return wml::node_ptr();
 		}
@@ -347,21 +445,6 @@ private:
 	std::string monster_;
 };
 
-bool is_valid_summoning_hex(const game* g, int player, const hex::location& loc) {
-	const tile* t = g->get_tile(loc.x(), loc.y());
-	if(!t || t->terrain()->id() == "void" || g->get_unit_at(loc).get() != NULL) {
-		return false;
-	}
-
-	foreach(const_unit_ptr u, g->units()) {
-		if(u->side() == player && u->can_summon() && hex::tiles_adjacent(u->loc(), loc)) {
-			return true;
-		}
-	}
-	
-	return g->players()[player].towers.count(loc) != 0;
-}
-
 monster_card::monster_card(wml::const_node_ptr node)
   : card(node), monster_(node->attr("monster"))
 {}
@@ -375,7 +458,9 @@ wml::node_ptr monster_card::play_card(card_selector& client) const
 	if(targets_valid) {
 		valid_target_fn = boost::bind(is_loc_in_vector, _1, targets);
 	} else {
-		valid_target_fn = boost::bind(is_valid_summoning_hex, &client.get_game(), client.player_id(), _1);
+		const_unit_ptr proto = unit::get_prototype(monster_);
+		ASSERT_LOG(proto.get() != NULL, "INVALID MONSTER: " << monster_);
+		valid_target_fn = boost::bind(is_valid_summoning_hex, &client.get_game(), client.player_id(), _1, proto);
 	}
 
 	hex::location loc =
@@ -450,4 +535,28 @@ std::string write_deck(const std::vector<held_card>& cards)
 	}
 
 	return result;
+}
+
+bool is_valid_summoning_hex(const game* g, int player, const hex::location& loc, const_unit_ptr proto) {
+	const tile* t = g->get_tile(loc.x(), loc.y());
+	if(!t || t->terrain()->id() == "void" || g->get_unit_at(loc).get() != NULL) {
+		return false;
+	}
+
+	foreach(const_unit_ptr u, g->units()) {
+		if(u->side() == player && hex::tiles_adjacent(u->loc(), loc)) {
+			bool can_summon = true;
+			foreach(char resource_type, proto->upkeep()) {
+				if(!u->can_summon(resource_type)) {
+					can_summon = false;
+				}
+			}
+
+			if(can_summon) {
+				return true;
+			}
+		}
+	}
+	
+	return g->players()[player].towers.count(loc) != 0;
 }

@@ -92,7 +92,8 @@ unit::unit(wml::const_node_ptr node)
 	has_moved_(wml::get_bool(node, "has_moved", false)),
 	mod_id_(wml::get_int(node, "mod_id")),
 	move_type_(movement_type::get(node->attr("movement_type"))),
-	can_summon_(wml::get_bool(node, "can_summon", false)),
+	can_summon_(node->attr("can_summon")),
+	can_cast_(node->attr("can_cast")),
 	can_produce_(wml::get_bool(node, "can_produce", false))
 {
 	if(key_ == -1) {
@@ -143,7 +144,8 @@ wml::node_ptr unit::write() const
 		node->add_child(m->write());
 	}
 
-	node->set_attr("can_summon", can_summon_ ? "yes" : "no");
+	node->set_attr("can_summon", can_summon_);
+	node->set_attr("can_cast", can_cast_);
 	node->set_attr("can_produce", can_produce_ ? "yes" : "no");
 
 	foreach(unit_ability_ptr a, abilities_) {
@@ -217,6 +219,25 @@ void unit::heal()
 	}
 }
 
+bool unit::can_summon(char resource_type) const
+{
+	return std::find(can_summon_.begin(), can_summon_.end(), resource_type) != can_summon_.end();
+}
+
+bool unit::can_cast(char resource_type) const
+{
+	return std::find(can_cast_.begin(), can_cast_.end(), resource_type) != can_cast_.end();
+}
+
+unit_ability_ptr unit::default_ability() const
+{
+	if(abilities_.empty()) {
+		return unit_ability_ptr();
+	}
+
+	return abilities_.front();
+}
+
 void unit::add_modification(const modification& mod)
 {
 	mods_.push_back(mod_ptr(new modification(mod)));
@@ -242,5 +263,7 @@ void unit::set_value(const std::string& key, const variant& value)
 		damage_taken_ = value.as_int();
 	} else if(key == "has_moved") {
 		has_moved_ = value.as_bool();
+	} else if(key == "life") {
+		life_ = value.as_int();
 	}
 }

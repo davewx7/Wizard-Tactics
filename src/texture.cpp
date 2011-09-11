@@ -537,22 +537,22 @@ texture texture::get_no_cache(const surface& surf)
 
 GLfloat texture::get_coord_x(GLfloat x)
 {
-	return u_position + (npot_allowed ? x : x*width_multiplier);
+	return u_position + x*width_multiplier;
 }
 
 GLfloat texture::get_coord_y(GLfloat y)
 {
-	return v_position + (npot_allowed ? y : y*height_multiplier);
+	return v_position + y*height_multiplier;
 }
 
 GLfloat texture::translate_coord_x(GLfloat x) const
 {
-	return u_position + (npot_allowed ? x : x*ratio_w_);
+	return u_position + x*ratio_w_;
 }
 
 GLfloat texture::translate_coord_y(GLfloat y) const
 {
-	return v_position + (npot_allowed ? y : y*ratio_h_);
+	return v_position + y*ratio_h_;
 }
 
 void texture::clear_cache()

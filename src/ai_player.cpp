@@ -2,6 +2,7 @@
 #include <numeric>
 
 #include "ai_player.hpp"
+#include "asserts.hpp"
 #include "foreach.hpp"
 #include "game.hpp"
 #include "game_utils.hpp"
@@ -146,17 +147,13 @@ std::vector<wml::node_ptr> default_ai_player::play()
 
 			if(card->monster_id()) {
 
+				const_unit_ptr proto = unit::get_prototype(*card->monster_id());
+				ASSERT_LOG(proto.get() != NULL, "INVALID MONSTER ID: " << card->monster_id());
+
 				hex::location summoning_hex;
-				foreach(unit_ptr u, get_game().units()) {
-					if(u->side() == player_id() && u->can_summon()) {
-						hex::location adj[6];
-						hex::get_adjacent_tiles(u->loc(), adj);
-						foreach(const hex::location a, adj) {
-							if(get_game().get_tile(a) != NULL && get_game().get_unit_at(a).get() == NULL) {
-								summoning_hex = a;
-								break;
-							}
-						}
+				foreach(const tile& t, get_game().tiles()) {
+					if(is_valid_summoning_hex(&get_game(), player_id(), t.loc(), proto)) {
+						summoning_hex = t.loc();
 					}
 				}
 

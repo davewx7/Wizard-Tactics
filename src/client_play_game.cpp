@@ -48,6 +48,8 @@ private:
 	const_unit_avatar_ptr avatar_;
 };
 
+const int SideBarWidth = 200;
+
 }
 
 client_play_game::client_play_game(const std::string& player_name)
@@ -56,10 +58,10 @@ client_play_game::client_play_game(const std::string& player_name)
   end_turn_button_(new gui::button(gui::widget_ptr(new gui::label("End Turn", graphics::color_white())), boost::bind(&client_play_game::end_turn, this))),
   cancel_button_(new gui::button(gui::widget_ptr(new gui::label("Cancel", graphics::color_white())), boost::bind(&client_play_game::cancel_action, this))),
   animation_time_(0),
-  xscroll_(0), yscroll_(0)
+  xscroll_(-SideBarWidth), yscroll_(0)
 {
-	end_turn_button_->set_loc(880, 640);
-	cancel_button_->set_loc(880, 640);
+	end_turn_button_->set_loc(20, 640);
+	cancel_button_->set_loc(20, 640);
 	widgets_.insert(end_turn_button_);
 }
 
@@ -191,14 +193,14 @@ void client_play_game::play()
 
 		if(key_[SDLK_LEFT]) {
 			xscroll_ -= ScrollSpeed;
-			if(xscroll_ < 0) {
-				xscroll_ = 0;
+			if(xscroll_ < -SideBarWidth) {
+				xscroll_ = -SideBarWidth;
 			}
 		}
 
 		if(key_[SDLK_RIGHT]) {
 			xscroll_ += ScrollSpeed;
-			const int MaxScroll = get_game().width()*HexWidth + 200 - graphics::screen_width();
+			const int MaxScroll = get_game().width()*HexWidth + HexWidth/2 - graphics::screen_width();
 			if(xscroll_ > MaxScroll) {
 				xscroll_ = MaxScroll;
 			}
@@ -319,7 +321,7 @@ void client_play_game::draw() const
 
 	glPopMatrix();
 
-	graphics::draw_rect(rect(graphics::screen_width()-200, 0, 200, graphics::screen_height()), graphics::color(0, 0, 0, 255));
+	graphics::draw_rect(rect(0, 0, SideBarWidth, graphics::screen_height()), graphics::color(0, 0, 0, 255));
 
 	int mousex, mousey;
 	SDL_GetMouseState(&mousex, &mousey);
@@ -329,7 +331,7 @@ void client_play_game::draw() const
 	const int selected = selected_card();
 	const game::player& player = game_->players()[player_id_];
 	for(int n = 0; n != player.spells.size(); ++n) {
-		const int x = 20 + n*100;
+		const int x = SideBarWidth + 10 + n*100;
 		const int y = 600 - (n == selected ? 20 : 0);
 
 		if(player.spells[n].embargo) {
@@ -358,7 +360,7 @@ void client_play_game::draw() const
 		const_gui_section_ptr section = gui_section::get(buf);
 
 		for(int m = 0; m < player.resources[n]; ++m) {
-			section->blit((graphics::screen_width() - 180) + 16*(m%5), resourcey, 16, 16);
+			section->blit(20 + 16*(m%5), resourcey, 16, 16);
 			if((m+1)%5 == 0 && m+1 < player.resources[n]) {
 				resourcey += 24;
 			}
@@ -400,7 +402,7 @@ int client_play_game::selected_card() const
 
 	const game::player& player = game_->players()[player_id_];
 	for(int n = 0; n != player.spells.size(); ++n) {
-		const int xpos = 20 + n*100;
+		const int xpos = SideBarWidth + 10 + n*100;
 		const int ypos = 600;
 		if(x >= xpos && x < xpos + 80 && y >= ypos && y < ypos + 100) {
 			if(player.spells[n].embargo) {
@@ -514,7 +516,6 @@ void client_play_game::handle_mouse_button_down(const SDL_MouseButtonEvent& even
 
 					const hex::location src_loc = moving_unit_->loc();
 					moving_unit_->set_loc(loc);
-					moving_unit_->set_loc(src_loc);
 
 					bool has_usable_abilities = false;
 					foreach(unit_ability_ptr a, moving_unit_->abilities()) {
@@ -523,8 +524,20 @@ void client_play_game::handle_mouse_button_down(const SDL_MouseButtonEvent& even
 						}
 					}
 
+					moving_unit_->set_loc(src_loc);
+
+					std::cerr << "HAS USABLE: " << (has_usable_abilities ? " YES" : " NO") << "\n";
+
 					if(has_usable_abilities) {
 						state_ = STATE_USE_ABILITIES;
+						if(moving_unit_->default_ability() &&
+						   moving_unit_->default_ability()->is_ability_usable(*moving_unit_, *this)) {
+							unit_ptr u = moving_unit_;
+					// TODO: make default abilities work.
+					//		activate_ability(moving_unit_, moving_unit_->default_ability());
+							moving_unit_ = u;
+							set_abilities_buttons();
+						}
 					} else {
 						moving_unit_ = unit_ptr();
 						current_routes_.reset();
@@ -575,7 +588,7 @@ void client_play_game::set_abilities_buttons()
 
 	using namespace gui;
 
-	gui::dialog_ptr main_grid(new gui::dialog(graphics::screen_width() - 180, 5, 180, 380));
+	gui::dialog_ptr main_grid(new gui::dialog(20, 5, 180, 380));
 	main_grid->set_padding(8);
 
 	main_grid->add_widget(widget_ptr(new label(displayed->name(), graphics::color_white(), 16)));
@@ -611,7 +624,7 @@ void client_play_game::set_abilities_buttons()
 		}
 
 		button* b = new button(g, boost::bind(&client_play_game::activate_ability, this, displayed, a));
-		if(a->is_ability_usable(*displayed, *this) == false) {
+		if(a->is_ability_usable(*displayed, *this) == false || state_ == STATE_SELECT_LOC) {
 			b->set_disabled();
 		}
 		ability_grid->add_col(widget_ptr(b));
@@ -650,13 +663,14 @@ void client_play_game::activate_ability(unit_ptr u, unit_ability_ptr a)
 		if(result.get() != NULL) {
 			network::send(wml::output(result));
 			network::send("[end_turn]\n[/end_turn]\n");
-		}
 
-		moving_unit_.reset();
-		current_routes_.reset();
-		set_abilities_buttons();
+			moving_unit_.reset();
+			current_routes_.reset();
+		}
 	} catch(action_cancellation_exception& e) {
 	}
+
+	set_abilities_buttons();
 }
 
 void client_play_game::build_avatars()

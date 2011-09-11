@@ -66,7 +66,7 @@ rect draw_card(const_card_ptr c, int x, int y)
 		}
 	}
 
-	//graphics::blit_texture(font::render_text(c->name(), graphics::color_white(), 14), x + 3, cost_pos_y + 18);
+	graphics::blit_texture(font::render_text(c->name(), graphics::color_white(), 12), x + 8, cost_pos_y + 18);
 
 	return area;
 }
