@@ -9,10 +9,10 @@ When Duelist of Tenser is attacked, if it has no other units adjacent to it, and
 
 --
 
-Anselm High Guard 6
-2/6/3
-defense: 2
-counterstrike
+Anselm High Guard 6 #name cost
+2/6/3 #attack/life/move
+defense: 2 #armor
+counterstrike ✔
 
 --
 
