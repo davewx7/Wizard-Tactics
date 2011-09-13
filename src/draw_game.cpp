@@ -75,12 +75,6 @@ void draw_map(const client_play_game& info, const game& g, int xpos, int ypos)
 				}
 
 				draw_tile(info, g, xpos, ypos, loc, "terrain/towers.png", area, loc == selected || info.is_highlighted_loc(loc));
-
-				char buf[128];
-				sprintf(buf, "magic-icon-%c", tower_resource);
-
-				const const_gui_section_ptr section = gui_section::get(buf);
-				section->blit(xpos + tile_pixel_x(loc) + 24, ypos + tile_pixel_y(loc) + 10);
 			}
 		}
 	}
@@ -96,4 +90,54 @@ void draw_map(const client_play_game& info, const game& g, int xpos, int ypos)
 			draw_tile(info, g, xpos, ypos, loc, t->overlay_texture(), t->overlay_texture_area(), loc == selected);
 		}
 	}
+}
+
+void draw_underlays(const client_play_game& info, const game& g, const hex::location& loc)
+{
+
+	static const graphics::texture tower_texture = graphics::texture::get("towers.png");
+	static const rect tower_area(39, 2, 38, 40);
+
+	const int x = tile_pixel_x(loc) + HexWidth/2 - tower_area.w();
+	const int y = tile_pixel_y(loc) + HexHeight - 8 - tower_area.h()*2;
+
+	const GLfloat TileEpsilon = 0.01;
+	const GLfloat x1 = GLfloat(tower_area.x())/GLfloat(tower_texture.width());
+	const GLfloat x2 = GLfloat(tower_area.x() + tower_area.w() - TileEpsilon)/GLfloat(tower_texture.width());
+	const GLfloat y1 = GLfloat(tower_area.y())/GLfloat(tower_texture.height());
+	const GLfloat y2 = GLfloat(tower_area.y() + tower_area.h() - TileEpsilon)/GLfloat(tower_texture.height());
+
+	graphics::blit_texture(tower_texture, x, y, tower_area.w()*2, tower_area.h()*2, 0,
+	                       x1, y1, x2, y2);
+}
+
+void draw_overlays(const client_play_game& info, const game& g, const hex::location& loc)
+{
+	static const graphics::texture tower_texture = graphics::texture::get("towers.png");
+	rect tower_area(1, 2, 38, 40);
+
+	char tower_resource = 0;
+	const int tower_owner = g.tower_owner(loc, &tower_resource);
+
+	if(tower_owner != -1) {
+		switch(tower_resource) {
+		case 'f': tower_area = rect(191, 2, 38, 40); break;
+		case 'g': tower_area = rect(115, 2, 38, 40); break;
+		case 'b': tower_area = rect(153, 2, 38, 40); break;
+		case 'h': tower_area = rect(115, 46, 38, 40); break;
+		case 's': tower_area = rect(191, 46, 38, 40); break;
+		}
+	}
+
+	const int x = tile_pixel_x(loc) + HexWidth/2 - tower_area.w();
+	const int y = tile_pixel_y(loc) + HexHeight - 8 - tower_area.h()*2;
+
+	const GLfloat TileEpsilon = 0.01;
+	const GLfloat x1 = GLfloat(tower_area.x())/GLfloat(tower_texture.width());
+	const GLfloat x2 = GLfloat(tower_area.x() + tower_area.w() - TileEpsilon)/GLfloat(tower_texture.width());
+	const GLfloat y1 = GLfloat(tower_area.y())/GLfloat(tower_texture.height());
+	const GLfloat y2 = GLfloat(tower_area.y() + tower_area.h() - TileEpsilon)/GLfloat(tower_texture.height());
+
+	graphics::blit_texture(tower_texture, x, y, tower_area.w()*2, tower_area.h()*2, 0,
+	                       x1, y1, x2, y2);
 }

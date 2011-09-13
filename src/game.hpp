@@ -72,6 +72,7 @@ public:
 	int player_casting() const { return player_casting_; }
 
 	int tower_owner(const hex::location& loc, char* resource=NULL) const;
+	std::set<hex::location> tower_locs() const;
 
 	void execute_command(variant v, class client_play_game* client);
 private:

@@ -15,6 +15,8 @@ public:
 
 	void set_terrain(const std::string& id);
 
+	int unit_y_offset() const;
+
 	const std::string& texture() const;
 	const std::string& overlay_texture() const;
 

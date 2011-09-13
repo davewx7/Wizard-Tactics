@@ -638,6 +638,19 @@ int game::tower_owner(const hex::location& loc, char* resource) const
 	return -1;
 }
 
+std::set<hex::location> game::tower_locs() const
+{
+	std::set<hex::location> res = neutral_towers_;
+	foreach(const player& p, players_) {
+		for(std::map<hex::location, char>::const_iterator i = p.towers.begin();
+		    i != p.towers.end(); ++i) {
+			res.insert(i->first);
+		}
+	}
+
+	return res;
+}
+
 unit_ptr game::get_unit_at(const hex::location& loc)
 {
 	foreach(const unit_ptr& u, units_) {

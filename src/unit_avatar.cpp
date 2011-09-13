@@ -74,7 +74,7 @@ unit_avatar::unit_avatar(unit_ptr u)
 void unit_avatar::draw(int time) const
 {
 	int x = tile_center_x(unit_->loc());
-	int y = tile_center_y(unit_->loc());
+	int y = tile_center_y(unit_->loc()) + game::current()->get_tile(unit_->loc())->unit_y_offset();
 	if(path_.empty() == false) {
 		//TODO: make arrows work nicely.
 		//draw_arrow(arrow_);
@@ -82,7 +82,8 @@ void unit_avatar::draw(int time) const
 		const hex::location b = path_.size() > 1 ? path_[path_.size()-2] : path_.back();
 
 		x = (tile_center_x(a)*(10 - time_in_path_) + tile_center_x(b)*time_in_path_)/10;
-		y = (tile_center_y(a)*(10 - time_in_path_) + tile_center_y(b)*time_in_path_)/10;
+		y = ((tile_center_y(a) + game::current()->get_tile(a)->unit_y_offset())*(10 - time_in_path_) +
+		    (tile_center_y(b) + game::current()->get_tile(b)->unit_y_offset())*time_in_path_)/10;
 	}
 
 	y -= 18;

@@ -28,6 +28,11 @@ void tile::set_terrain(const std::string& id)
 	terrain_ = terrain::get(id);
 }
 
+int tile::unit_y_offset() const
+{
+	return terrain_->unit_y_offset();
+}
+
 namespace {
 int prandom(const hex::location& loc)
 {

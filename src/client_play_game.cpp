@@ -311,8 +311,28 @@ void client_play_game::draw() const
 	std::vector<unit_avatar_ptr> avatars = unit_avatars_;
 	std::sort(avatars.begin(), avatars.end(), compare_unit_avatars_by_ypos);
 
-	foreach(unit_avatar_ptr a, avatars) {
-		a->draw();
+	std::vector<unit_avatar_ptr>::const_iterator avatar_itor = avatars.begin();
+
+	const std::set<hex::location>& towers = game_->tower_locs();
+	for(int y = 0; y != game_->height(); ++y) {
+		for(int x = 0; x != game_->height(); ++x) {
+			hex::location loc(x, y);
+			if(towers.count(loc) == 1) {
+				draw_underlays(*this, *game_, loc);
+			}
+		}
+
+		while(avatar_itor != avatars.end() && (*avatar_itor)->get_unit()->loc().y() == y) {
+			(*avatar_itor)->draw();
+			++avatar_itor;
+		}
+
+		for(int x = 0; x != game_->height(); ++x) {
+			hex::location loc(x, y);
+			if(towers.count(loc) == 1) {
+				draw_overlays(*this, *game_, loc);
+			}
+		}
 	}
 
 	if(prompt_texture_.valid()) {

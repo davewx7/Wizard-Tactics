@@ -26,6 +26,8 @@ public:
 	int resource_id() const { return resource_id_; }
 	int calculate_production_value() const;
 
+	int unit_y_offset() const { return unit_y_offset_; }
+
 private:
 	std::string id_, resource_;
 
@@ -37,6 +39,8 @@ private:
 
 	int production_difficulty_;
 	int overlay_order_;
+
+	int unit_y_offset_;
 };
 
 #endif

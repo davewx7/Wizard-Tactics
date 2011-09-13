@@ -1,0 +1,233 @@
+HONOR
+
+Anselm High Guard 6
+2/6/3
+defense: 2
+counterstrike
+
+--
+
+High Elf Archer 5
+2/4/3
+
+range 2
+On Guard: 1 -- when this ability is activated, High Elf Archer does 2 damage to the next enemy unit that moves within 2 spaces of High Elf Archer this turn
+
+--
+
+Ilia Shield Maiden 4
+0/3/3
+defense: 1
+friendly units adjacent to Ilia Shield Maiden get +1 defense
+
+--
+
+Mage of Anselm 4
+1/3/3
+
+Casts honor spells
+
+heal: heal two damage from adjacent unit.
+
+--
+
+GOLD
+
+Archer 3
+1/3/3
+range 2
+
+--
+
+Warrior 4
+2/4/3
+
+--
+
+Rogue 3
+1/1/4
+
+Rogue cannot be the target of opponent's spells.
+
+Dodge: T -- The next time Rogue is attacked this turn, it will take no damage.
+
+--
+
+Tenser Sell-Sword 2
+2/4/3
+
+Tenser Sell-Sword's attack costs 1 gold to activate
+
+--
+
+Stone Wall 1
+0/5/0
+
+--
+
+Dwarvish Engineers 4
+1/4/3
+
+Build Wall: 1 (end turn) summon a Stone Wall unit adjacent to Dwarvish Engineers
+Repair Wall: 0 (end turn) heal an adjacent Stone Wall unit.
+
+--
+
+Siege Catapult 6
+3/5/1
+
+Range: 3
+
+--
+
+Dwarf Stalwart 5
+3/5/2
+
+--
+
+Dwarf Guardsman 3
+1/5/2
+
+Defensive Stance: (ends turn) Guardsman gets retaliation until end of turn. (any time it is damaged it will attack the unit that damaged it, if able).
+
+--
+
+Battle Mage 6
+3/4/3
+
+Attack has range 2, and ignores defense.
+
+--
+
+BLOOD
+
+Blood Hound 3
+1/3/3
+
++1 damage for each damage on target
+
+--
+
+Dark Adept 3
+2/2/3
+casts Blood
+attack range 2, costs B
+
+--
+
+Dark Summoner 3
+0/3/3
+summons Blood
+
+--
+
+Death Knight 6
+3/5/3
+
+--
+
+Skeleton 2
+1/2/3
+
+--
+
+Vampire Bat 3
+1/2/4
+Flying
+
+--
+
+Vampire 3
+1/3/3
++B for every damage vampire inflicts
+
+--
+
+Vampire Lord 4
+2/4/3
+Drains
+When an enemy unit is destroyed by Vampire Lord, replace it with a Vampire
+
+--
+
+Wraith 7
+2/3/4
+Flying
+When Wraith does damage it deals it as loss of life, and gains life equal to damage it does.
+
+--
+
+Flesh Wound 1
+range 2
+
+Deals 1 damage to target
+
+--
+
+Terror 2
+range 2
+
+Target unit gets -2 defense for the rest of the turn.
+
+FOOD
+
+Dire Wolf 4
+2/3/4
+
+F: +1 movement
+
+--
+
+Goblin Rogue 3
+1/2/3
+
+Refresh: F
+
+--
+
+Orcish Grunt 4
+3/3/3
+
+--
+
+Orcish Archer 3
+2/1/3
+
+Range 2
+
+--
+
+Orcish Crusher 5
+3/4/3
+
+F: +1 damage until end of turn
+
+--
+
+Minotaur 6
+3/5/3
+
+When Minotaur attacks, if the opposite tile from where it is attacking is a location it could move to, it moves there. Then, it may attack again, any unit which is now adjacent to it and which it hasn't attacked this turn.
+
+--
+
+Rampaging Ogre 8
+4/8/3
+
+At the beginning of each round, each unit adjacent to Ogre takes 2 damage.
+
+--
+
+Rampage 1
+
+Range 2
+
+Target unit deals +1 damage when it attacks until end of turn.
+
+--
+
+Replenishing Feast 1
+
+Range 1
+
+Target unit heals 2 damage

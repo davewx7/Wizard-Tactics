@@ -46,7 +46,8 @@ terrain::terrain(wml::const_node_ptr node)
 	overlay_texture_(node->attr("overlay_image")),
 	resource_id_(-1),
 	production_difficulty_(wml::get_int(node, "difficulty")),
-	overlay_order_(next_overlay_order++)
+	overlay_order_(next_overlay_order++),
+	unit_y_offset_(wml::get_int(node, "unit_y_offset"))
 {
 	std::vector<std::string> areas = util::split(node->attr("image_area"), ':');
 	foreach(const std::string& area, areas) {
