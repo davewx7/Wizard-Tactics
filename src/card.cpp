@@ -565,6 +565,10 @@ bool is_valid_summoning_hex(const game* g, int player, const hex::location& loc,
 		return false;
 	}
 
+	if(t->terrain()->id() == "tower" && g->tower_owner(loc) != player) {
+		return false;
+	}
+
 	foreach(const_unit_ptr u, g->units()) {
 		if(u->side() == player && hex::tiles_adjacent(u->loc(), loc)) {
 			bool can_summon = true;
@@ -580,5 +584,5 @@ bool is_valid_summoning_hex(const game* g, int player, const hex::location& loc,
 		}
 	}
 	
-	return g->players()[player].towers.count(loc) != 0;
+	return false;
 }
