@@ -2,6 +2,7 @@
 #include "foreach.hpp"
 #include "formatter.hpp"
 #include "game.hpp"
+#include "game_formula_functions.hpp"
 #include "resource.hpp"
 #include "string_utils.hpp"
 #include "unit.hpp"
@@ -111,6 +112,15 @@ unit::unit(wml::const_node_ptr node)
 	FOREACH_WML_CHILD(ability_node, node, "ability") {
 		abilities_.push_back(unit_ability_ptr(new unit_ability(id_, ability_node)));
 	}
+
+	game_logic::function_symbol_table* symbols = &get_game_formula_functions_symbol_table();
+
+	for(wml::node::const_attr_iterator i = node->begin_attr(); i != node->end_attr(); ++i) {
+		if(i->first.size() > 3 && std::equal(i->first.begin(), i->first.begin() + 3, "on_")) {
+			const std::string event(i->first.begin() + 3, i->first.end());
+			handlers_[event] = game_logic::formula::create_optional_formula(i->second, symbols);
+		}
+	}
 }
 
 wml::node_ptr unit::write() const
@@ -150,6 +160,12 @@ wml::node_ptr unit::write() const
 
 	foreach(unit_ability_ptr a, abilities_) {
 		node->add_child(a->write());
+	}
+
+	for(handlers_map::const_iterator i = handlers_.begin(); i != handlers_.end(); ++i) {
+		if(i->second) {
+			node->set_attr("on_" + i->first, i->second->str());
+		}
 	}
 
 	return node;
@@ -266,4 +282,20 @@ void unit::set_value(const std::string& key, const variant& value)
 	} else if(key == "life") {
 		life_ = value.as_int();
 	}
+}
+
+void unit::handle_event(const std::string& name, const game_logic::formula_callable* callable) const
+{
+	const handlers_map::const_iterator itor = handlers_.find(name);
+	if(itor == handlers_.end()) {
+		return;
+	}
+
+	boost::intrusive_ptr<game_logic::map_formula_callable> context(new game_logic::map_formula_callable(callable));
+	context->add("unit", variant(this));
+	context->add("game", variant(game::current()));
+
+	const variant v = itor->second->execute(*context);
+	game::current()->execute_command(v, NULL);
+
 }

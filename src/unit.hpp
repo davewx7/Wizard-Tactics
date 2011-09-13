@@ -6,6 +6,7 @@
 #include <boost/intrusive_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include "formula.hpp"
 #include "formula_callable.hpp"
 #include "movement_type.hpp"
 #include "tile_logic.hpp"
@@ -80,6 +81,9 @@ public:
 	unit_ability_ptr default_ability() const;
 
 	void add_modification(const modification& mod);
+
+	void handle_event(const std::string& name, const game_logic::formula_callable* callable=NULL) const;
+
 private:
 	void assign_new_unit_key();
 	variant get_value(const std::string& key) const;
@@ -111,7 +115,9 @@ private:
 	bool can_produce_;
 
 	std::vector<unit_ability_ptr> abilities_;
-};
 
+	typedef std::map<std::string, game_logic::const_formula_ptr> handlers_map;
+	handlers_map handlers_;
+};
 
 #endif

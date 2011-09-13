@@ -62,7 +62,9 @@ public:
 	unit_ptr get_unit_at(const hex::location& loc);
 	const_unit_ptr get_unit_at(const hex::location& loc) const;
 
-	void resolve_combat();
+	void unit_free_attack(unit_ptr a, unit_ptr b);
+
+	bool do_state_based_actions();
 
 	void capture_tower(const hex::location& loc, unit_ptr u);
 

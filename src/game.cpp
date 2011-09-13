@@ -213,7 +213,7 @@ void game::handle_message(int nplayer, const simple_wml::string_span& type, simp
 		}
 
 		//make sure any units die that are meant to.
-		resolve_combat();
+		do_state_based_actions();
 
 		std::cerr << "SPELLS: " << spell_casting_passes_ << " / " << players_.size() << "\n";
 
@@ -223,11 +223,11 @@ void game::handle_message(int nplayer, const simple_wml::string_span& type, simp
 			int last_delay = -1;
 
 			//make sure any units die that are meant to.
-			resolve_combat();
+			do_state_based_actions();
 
 			ASSERT_INDEX_INTO_VECTOR(nplayer, players_);
 
-			resolve_combat();
+			do_state_based_actions();
 
 			for(int n = 0; n != players_.size(); ++n) {
 				draw_hand(n);
@@ -348,7 +348,7 @@ void game::play_card(int nplayer, simple_wml::node& msg, int speed)
 	}
 
 	resolve_card(nplayer, card, msg);
-	resolve_combat();
+	do_state_based_actions();
 
 	queue_message(wml::output(write()));
 }
@@ -443,6 +443,66 @@ void game::resolve_card(int nplayer, const_card_ptr card, simple_wml::node& msg)
 		if(u.get() != NULL) {
 			if(card->modification()) {
 				u->add_modification(*card->modification());
+			}
+		}
+	}
+}
+
+namespace {
+class free_attack_info_callable : public resolve_card_info
+{
+	unit_ptr attacker_;
+	hex::location target_;	
+
+	variant get_value(const std::string& key) const {
+		if(key == "caster") {
+			return variant(attacker_.get());
+		} else if(key == "target") {
+			return variant(new location_object(target_));
+		} else if(key == "targets") {
+			std::vector<variant> v;
+			variant value(new location_object(target_));
+			v.push_back(value);
+			return variant(&v);
+		} else if(key == "game") {
+			return variant(game::current());
+		} else {
+			return variant();
+		}
+	}
+
+	std::vector<hex::location> targets() const {
+		std::vector<hex::location> res;
+		res.push_back(target_);
+		return res;
+	}
+
+	unit_ptr caster() const {
+		return attacker_;
+	}
+
+	CARD_ACTIVATION_TYPE activation_type() const { return CARD_ACTIVATION_EVENT; }
+
+public:
+	free_attack_info_callable(unit_ptr a, const hex::location& target)
+	  : attacker_(a), target_(target)
+	{}
+};
+
+}
+
+void game::unit_free_attack(unit_ptr a, unit_ptr b)
+{
+	foreach(unit_ability_ptr ability, a->abilities()) {
+		const_card_ptr spell = card::get(ability->spell());
+		if(spell->is_attack()) {
+			std::vector<hex::location> valid_targets;
+			spell->calculate_valid_targets(a.get(), a->side(), valid_targets);
+			if(std::count(valid_targets.begin(), valid_targets.end(), b->loc())) {
+				free_attack_info_callable* callable_context = new free_attack_info_callable(a, b->loc());
+				const variant context_holder(callable_context);
+				spell->resolve_card(callable_context);
+				return;
 			}
 		}
 	}
@@ -673,15 +733,22 @@ const_unit_ptr game::get_unit_at(const hex::location& loc) const
 	return const_unit_ptr();
 }
 
-void game::resolve_combat()
+bool game::do_state_based_actions()
 {
+	bool actions = false;
 	foreach(unit_ptr& u, units_) {
 		if(u->damage_taken() >= u->life()) {
+			actions = true;
 			u.reset();
 		}
 	}
 
 	units_.erase(std::remove(units_.begin(), units_.end(), unit_ptr()), units_.end());
+	if(actions) {
+		do_state_based_actions();
+	}
+
+	return actions;
 }
 
 namespace {

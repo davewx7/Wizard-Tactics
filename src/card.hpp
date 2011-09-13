@@ -34,11 +34,14 @@ protected:
 	~card_selector() {}
 };
 
+enum CARD_ACTIVATION_TYPE { CARD_ACTIVATION_PLAYER, CARD_ACTIVATION_EVENT };
+
 class resolve_card_info : public game_logic::formula_callable
 {
 public:
 	virtual unit_ptr caster() const = 0;
 	virtual std::vector<hex::location> targets() const = 0;
+	virtual CARD_ACTIVATION_TYPE activation_type() const { return CARD_ACTIVATION_PLAYER; }
 protected:
 	~resolve_card_info() {}
 };
@@ -70,6 +73,8 @@ public:
 	virtual bool calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const;
 
 	virtual void resolve_card(const resolve_card_info* callable=NULL) const;
+
+	virtual bool is_attack() const { return false; }
 
 protected:
 	void handle_event(const std::string& name, const game_logic::formula_callable* callable=NULL) const;

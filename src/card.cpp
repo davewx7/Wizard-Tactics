@@ -249,6 +249,8 @@ public:
 	virtual void resolve_card(const resolve_card_info* callable=NULL) const;
 	virtual bool calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const;
 	int damage() const { return damage_; }
+
+	bool is_attack() const { return true; }
 private:
 	int damage_, range_;
 
@@ -321,6 +323,26 @@ void attack_card::resolve_card(const resolve_card_info* callable) const
 		map_formula_callable_ptr map_callable(new map_formula_callable(callable));
 
 		const std::vector<hex::location> targets = callable->targets();
+
+		//if this is a regular attack (not a 'free' attack) we activate
+		//the attacked event.
+		if(callable->activation_type() == CARD_ACTIVATION_PLAYER) {
+			foreach(const hex::location& target, targets) {
+				unit_ptr u = game::current()->get_unit_at(target);
+				if(u.get() != NULL) {
+					u->handle_event("attacked", callable);
+				}
+			}
+		}
+
+		game::current()->do_state_based_actions();
+
+		if(std::count(game::current()->units().begin(), game::current()->units().end(), callable->caster()) == 0) {
+			//the attack is countered because the attacking unit is no longer
+			//on the battlefield.
+			return;
+		}
+
 		foreach(const hex::location& target, targets) {
 			unit_ptr u = game::current()->get_unit_at(target);
 			if(u.get() != NULL) {

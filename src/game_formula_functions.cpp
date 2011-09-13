@@ -121,6 +121,27 @@ FUNCTION_DEF(get_unit_at_loc, 1, 1, "get_unit_at_loc(loc): yields the unit at th
 	return variant();
 END_FUNCTION_DEF(get_unit_at_loc)
 
+class free_attack_command : public game_command_callable
+{
+public:
+	free_attack_command(unit_ptr attacker, unit_ptr target)
+	  : attacker_(attacker), target_(target)
+	{}
+
+	virtual void execute(client_play_game* client) const {
+		game::current()->unit_free_attack(attacker_, target_);
+	}
+
+private:
+	unit_ptr attacker_, target_;
+};
+
+FUNCTION_DEF(free_attack, 2, 2, "free_attack(attacker, target): makes the attacker get a free attack on target")
+	unit_ptr attacker(args()[0]->evaluate(variables).convert_to<unit>());
+	unit_ptr target(args()[1]->evaluate(variables).convert_to<unit>());
+	return variant(new free_attack_command(attacker, target));
+END_FUNCTION_DEF(free_attack)
+
 class set_command : public game_command_callable
 {
 public:
