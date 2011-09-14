@@ -2,6 +2,7 @@
 #include "client_play_game.hpp"
 #endif
 
+#include "debug_console.hpp"
 #include "formula.hpp"
 #include "game.hpp"
 #include "game_formula_functions.hpp"
@@ -69,6 +70,7 @@ public:
 
 	void execute(client_play_game* client) const {
 		std::cerr << "DEBUG: '" << str_ << "'\n";
+		debug_console::add_message(str_);
 	}
 };
 

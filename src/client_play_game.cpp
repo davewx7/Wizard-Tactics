@@ -163,6 +163,8 @@ void client_play_game::play()
 						}
 					}
 				}
+			} else if(msg->name() == "debug_msg") {
+				debug_console::add_message(formatter() << "<server> " << msg->attr("msg").str());
 			}
 		}
 
