@@ -220,11 +220,7 @@ void unit::new_turn()
 {
 	has_moved_ = false;
 	movement_path_.clear();
-}
 
-void unit::heal()
-{
-	damage_taken_ = 0;
 	std::vector<mod_ptr>::iterator i = mods_.begin();
 	while(i != mods_.end()) {
 		if((*i)->expires_end_of_turn) {
@@ -233,6 +229,11 @@ void unit::heal()
 			++i;
 		}
 	}
+}
+
+void unit::heal()
+{
+	damage_taken_ = 0;
 }
 
 bool unit::can_summon(char resource_type) const
@@ -280,7 +281,11 @@ void unit::set_value(const std::string& key, const variant& value)
 	} else if(key == "has_moved") {
 		has_moved_ = value.as_bool();
 	} else if(key == "life") {
-		life_ = value.as_int();
+		//life is actually a derived value, taking life_ + modifications.
+		//So here we calculate the delta to set life_.
+		const int new_life = value.as_int();
+		const int life_diff = new_life - life();
+		life_ += life_diff;
 	}
 }
 

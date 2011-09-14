@@ -3,11 +3,13 @@
 #endif
 
 #include "debug_console.hpp"
+#include "formatter.hpp"
 #include "formula.hpp"
 #include "game.hpp"
 #include "game_formula_functions.hpp"
 #include "terrain.hpp"
 #include "unit.hpp"
+#include "wml_node.hpp"
 
 using namespace game_logic;
 
@@ -143,6 +145,33 @@ FUNCTION_DEF(free_attack, 2, 2, "free_attack(attacker, target): makes the attack
 	unit_ptr target(args()[1]->evaluate(variables).convert_to<unit>());
 	return variant(new free_attack_command(attacker, target));
 END_FUNCTION_DEF(free_attack)
+
+class unit_modification_command : public game_command_callable
+{
+	unit_ptr target_;
+	unit::modification mod_;
+public:
+	unit_modification_command(unit_ptr target, const std::string& attr, int value)
+	  : target_(target)
+	{
+		wml::node_ptr node(new wml::node("mod"));
+		node->set_attr(attr, formatter() << value);
+		node->set_attr("expires_end_of_turn", "yes");
+		mod_ = unit::modification(node);
+	}
+
+	virtual void execute(client_play_game* client) const {
+		target_->add_modification(mod_);
+	}
+};
+
+FUNCTION_DEF(modify_unit_until_end_of_turn, 3, 3, "modify_unit_until_end_of_turn(unit, attribute, modification): modifies the unit's attribute by 'modification' until the end of the turn")
+	const unit_ptr target(args()[0]->evaluate(variables).convert_to<unit>());
+	const std::string attr(args()[1]->evaluate(variables).as_string());
+	const int value(args()[2]->evaluate(variables).as_int());
+
+	return variant(new unit_modification_command(target, attr, value));
+END_FUNCTION_DEF(modify_unit_until_end_of_turn)
 
 class set_command : public game_command_callable
 {
