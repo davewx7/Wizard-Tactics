@@ -128,7 +128,7 @@ void client_play_game::play()
 				hex::location to_loc(wml::get_int(to_node, "x"), wml::get_int(to_node, "y"));
 
 				debug_console::add_message(formatter() << "Move unit from " << from_loc << " to " << to_loc);
-				unit_ptr u = game_->get_unit_at(from_loc);
+				const unit_ptr u = game_->get_unit_at(from_loc);
 				if(u.get() != NULL) {
 					std::vector<hex::location> path;
 					unit_movement_cost_calculator calc(game_.get(), u);
@@ -141,6 +141,27 @@ void client_play_game::play()
 					}
 
 					animation_time_ = (path.size()-1)*10;
+				}
+			} else if(msg->name() == "attack_anim") {
+				wml::const_node_ptr from_node = msg->get_child("from");
+				wml::const_node_ptr to_node = msg->get_child("to");
+
+				ASSERT_LOG(from_node.get() != NULL, "illegal attack_anim format");
+				ASSERT_LOG(to_node.get() != NULL, "illegal attack_anim format");
+
+				hex::location from_loc(wml::get_int(from_node, "x"), wml::get_int(from_node, "y"));
+				hex::location to_loc(wml::get_int(to_node, "x"), wml::get_int(to_node, "y"));
+				debug_console::add_message(formatter() << "Attack from " << from_loc << " to " << to_loc);
+
+				const unit_ptr u = game_->get_unit_at(from_loc);
+				if(u.get() != NULL) {
+					foreach(unit_avatar_ptr a, unit_avatars_) {
+						if(a->get_unit() == u) {
+							a->set_attack(to_loc);
+							animation_time_ = 10;
+							break;
+						}
+					}
 				}
 			}
 		}

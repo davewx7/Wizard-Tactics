@@ -1,6 +1,7 @@
 #include <map>
 
 #include "color_utils.hpp"
+#include "debug_console.hpp"
 #include "draw_number.hpp"
 #include "draw_utils.hpp"
 #include "game.hpp"
@@ -76,19 +77,33 @@ void unit_avatar::draw(int time) const
 	int x = tile_center_x(unit_->loc());
 	int y = tile_center_y(unit_->loc()) + game::current()->get_tile(unit_->loc())->unit_y_offset();
 	if(path_.empty() == false) {
-		//TODO: make arrows work nicely.
-		//draw_arrow(arrow_);
+		draw_arrow(arrow_);
 		const hex::location a = path_.back();
 		const hex::location b = path_.size() > 1 ? path_[path_.size()-2] : path_.back();
 
-		x = (tile_center_x(a)*(10 - time_in_path_) + tile_center_x(b)*time_in_path_)/10;
-		y = ((tile_center_y(a) + game::current()->get_tile(a)->unit_y_offset())*(10 - time_in_path_) +
-		    (tile_center_y(b) + game::current()->get_tile(b)->unit_y_offset())*time_in_path_)/10;
+		const point pos = get_position_between_tiles(a, b, time_in_path_*10);
+		x = pos.x;
+		y = pos.y;
+	} else if(attack_target_.valid()) {
+		const int percent = time_in_path_ < 10 ? time_in_path_*5 : (20 - time_in_path_)*5;
+		const point pos = get_position_between_tiles(unit_->loc(), attack_target_, percent);
+		x = pos.x;
+		y = pos.y;
 	}
 
 	y -= 18;
 
 	draw(x, y, time);
+}
+
+point unit_avatar::get_position_between_tiles(const hex::location& a, const hex::location& b, int percent) const
+{
+	point res;
+	res.x = (tile_center_x(a)*(100 - percent) + tile_center_x(b)*percent)/100;
+	res.y = ((tile_center_y(a) + game::current()->get_tile(a)->unit_y_offset())*(100 - percent) +
+		    (tile_center_y(b) + game::current()->get_tile(b)->unit_y_offset())*percent)/100;
+	
+	return res;
 }
 
 void unit_avatar::draw(int x, int y, int time) const
@@ -139,15 +154,27 @@ void unit_avatar::set_path(const std::vector<hex::location>& path)
 	time_in_path_ = 0;
 }
 
+void unit_avatar::set_attack(const hex::location& attack_target)
+{
+	attack_target_ = attack_target;
+	time_in_path_ = 0;
+}
+
 void unit_avatar::process()
 {
 	if(path_.empty() == false) {
 		++time_in_path_;
 		if(time_in_path_ >= 10) {
 			time_in_path_ = 0;
-			if(path_.size() > 1) {
-				path_.pop_back();
-			}
+			path_.pop_back();
+		}
+	}
+	
+	if(attack_target_.valid()) {
+		++time_in_path_;
+		if(time_in_path_ >= 20) {
+			time_in_path_ = 0;
+			attack_target_ = hex::location();
 		}
 	}
 }

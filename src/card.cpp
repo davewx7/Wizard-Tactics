@@ -21,6 +21,7 @@
 #include "wml_node.hpp"
 #include "wml_parser.hpp"
 #include "wml_utils.hpp"
+#include "wml_writer.hpp"
 
 const_card_ptr card::get(const std::string& id)
 {
@@ -346,6 +347,11 @@ void attack_card::resolve_card(const resolve_card_info* callable) const
 		foreach(const hex::location& target, targets) {
 			unit_ptr u = game::current()->get_unit_at(target);
 			if(u.get() != NULL) {
+
+				wml::node_ptr attack_anim_node(new wml::node("attack_anim"));
+				attack_anim_node->add_child(hex::write_location("from", callable->caster()->loc()));
+				attack_anim_node->add_child(hex::write_location("to", target));
+				game::current()->queue_message(wml::output(attack_anim_node));
 
 				const int defense = unit_protection(*game::current(), u);
 

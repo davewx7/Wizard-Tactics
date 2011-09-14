@@ -3,6 +3,7 @@
 
 #include <boost/shared_ptr.hpp>
 
+#include "geometry.hpp"
 #include "unit.hpp"
 #include "wml_node_fwd.hpp"
 
@@ -19,12 +20,17 @@ public:
 	void set_unit(unit_ptr u) { unit_ = u; }
 	void set_path(const std::vector<hex::location>& path);
 
+	void set_attack(const hex::location& attack_target);
+
 	void process();
 private:
+	point get_position_between_tiles(const hex::location& a, const hex::location& b, int percent) const;
+
 	unit_ptr unit_;
 	const unit_animation_set* anim_;
 	std::vector<hex::location> path_;
 	std::vector<hex::location> arrow_;
+	hex::location attack_target_;
 	int time_in_path_;
 };
 
