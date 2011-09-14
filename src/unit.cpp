@@ -269,6 +269,8 @@ variant unit::get_value(const std::string& key) const {
 		return variant(damage_taken_);
 	} else if(key == "has_moved") {
 		return variant(has_moved_);
+	} else if(key == "loc") {
+		return variant(new location_object(loc_));
 	} else {
 		return variant();
 	}
