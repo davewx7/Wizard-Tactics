@@ -434,6 +434,7 @@ void game::resolve_card(int nplayer, const_card_ptr card, simple_wml::node& msg)
 		hex::location loc(monster->attr("x").to_int(), monster->attr("y").to_int());
 		units_.push_back(unit::build_from_prototype(monster->attr("type").to_string(), nplayer, loc));
 		units_.back()->set_moved();
+		units_.back()->handle_event("summoned");
 
 	}
 

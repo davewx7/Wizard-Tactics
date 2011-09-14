@@ -194,6 +194,13 @@ F: +1 movement
 
 --
 
+Bloodthirsty Goblin 2
+1/2/3
+
+Hasty (can move on the turn it is summoned)
+
+--
+
 Goblin Rogue 3
 1/2/3
 
