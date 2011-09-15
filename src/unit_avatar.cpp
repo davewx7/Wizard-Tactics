@@ -69,7 +69,7 @@ void draw_hitpoints(int x, int y, int hp, int max_hp)
 unit_avatar::unit_avatar(unit_ptr u)
  : unit_(u),
    anim_(get_animations_for_unit(u->id(), u->side()).get()),
-   time_in_path_(0)
+   dead_(false), time_in_path_(0)
 {}
 
 void unit_avatar::draw(int time) const
@@ -93,7 +93,15 @@ void unit_avatar::draw(int time) const
 
 	y -= 18;
 
+	if(dead_) {
+		glColor4f(1.0, 1.0, 1.0, 1.0 - time_in_path_/10.0);
+	}
+
 	draw(x, y, time);
+
+	if(dead_) {
+		glColor4f(1.0, 1.0, 1.0, 1.0);
+	}
 }
 
 point unit_avatar::get_position_between_tiles(const hex::location& a, const hex::location& b, int percent) const
@@ -160,6 +168,14 @@ void unit_avatar::set_attack(const hex::location& attack_target)
 	time_in_path_ = 0;
 }
 
+void unit_avatar::set_dead()
+{
+	dead_ = true;
+	path_.clear();
+	attack_target_ = hex::location();
+	time_in_path_ = 0;
+}
+
 void unit_avatar::process()
 {
 	if(path_.empty() == false) {
@@ -176,6 +192,10 @@ void unit_avatar::process()
 			time_in_path_ = 0;
 			attack_target_ = hex::location();
 		}
+	}
+
+	if(dead_) {
+		++time_in_path_;
 	}
 }
 

@@ -194,6 +194,9 @@ void game::handle_message(int nplayer, const simple_wml::string_span& type, simp
 		u->set_loc(to_loc);
 		u->set_moved();
 		capture_tower(to_loc, u);
+
+		do_state_based_actions();
+
 		queue_message(wml::output(write()));
 
 	} else if(type == "play") {
@@ -435,7 +438,6 @@ void game::resolve_card(int nplayer, const_card_ptr card, simple_wml::node& msg)
 		units_.push_back(unit::build_from_prototype(monster->attr("type").to_string(), nplayer, loc));
 		units_.back()->set_moved();
 		units_.back()->handle_event("summoned");
-
 	}
 
 	foreach(const simple_wml::node* target, msg.children("target")) {
@@ -736,9 +738,19 @@ const_unit_ptr game::get_unit_at(const hex::location& loc) const
 
 bool game::do_state_based_actions()
 {
+	//visit all units and let them know of the game state
+	//change so they can update themselves.
+	foreach(unit_ptr& u, units_) {
+		u->game_state_changed();
+	}
+
+	//visit all units and kill any that are now dead.
 	bool actions = false;
 	foreach(unit_ptr& u, units_) {
 		if(u->damage_taken() >= u->life()) {
+			const wml::const_node_ptr death_anim_node(hex::write_location("death_anim", u->loc()));
+			queue_message(wml::output(death_anim_node));
+
 			actions = true;
 			u.reset();
 		}

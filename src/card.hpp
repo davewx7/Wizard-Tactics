@@ -76,6 +76,9 @@ public:
 
 	virtual bool is_attack() const { return false; }
 
+	//useful for displaying the card -- how much damage does it do?
+	virtual int damage() const { return 0; }
+
 protected:
 	void handle_event(const std::string& name, const game_logic::formula_callable* callable=NULL) const;
 private:

@@ -18,7 +18,7 @@ void unit::assign_new_unit_key()
 }
 
 unit::modification::modification()
-  : id(0), life(0), move(0), expires_end_of_turn(false)
+  : id(0), life(0), move(0), expires_end_of_turn(false), expires_on_state_change(false)
 {}
 
 unit::modification::modification(wml::const_node_ptr node)
@@ -26,7 +26,8 @@ unit::modification::modification(wml::const_node_ptr node)
     life(wml::get_int(node, "life")),
     armor(wml::get_int(node, "armor")),
     move(wml::get_int(node, "move")),
-    expires_end_of_turn(wml::get_bool(node, "expires_end_of_turn"))
+    expires_end_of_turn(wml::get_bool(node, "expires_end_of_turn")),
+    expires_on_state_change(wml::get_bool(node, "expires_on_state_change"))
 {}
 
 wml::node_ptr unit::modification::write() const
@@ -229,6 +230,20 @@ void unit::new_turn()
 			++i;
 		}
 	}
+}
+
+void unit::game_state_changed()
+{
+	std::vector<mod_ptr>::iterator i = mods_.begin();
+	while(i != mods_.end()) {
+		if((*i)->expires_on_state_change) {
+			mods_.erase(i++);
+		} else {
+			++i;
+		}
+	}
+	
+	handle_event("game_state_change");
 }
 
 void unit::heal()

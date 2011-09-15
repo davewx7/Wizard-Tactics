@@ -163,6 +163,21 @@ void client_play_game::play()
 						}
 					}
 				}
+			} else if(msg->name() == "death_anim") {
+				hex::location loc(wml::get_int(msg, "x"),
+				                  wml::get_int(msg, "y"));
+
+				const unit_ptr u = game_->get_unit_at(loc);
+				if(u.get() != NULL) {
+					foreach(unit_avatar_ptr a, unit_avatars_) {
+						if(a->get_unit() == u) {
+							a->set_dead();
+							animation_time_ = 10;
+							break;
+						}
+					}
+				}
+				
 			} else if(msg->name() == "debug_msg") {
 				debug_console::add_message(formatter() << "<server> " << msg->attr("msg").str());
 			}
@@ -650,11 +665,21 @@ void client_play_game::set_abilities_buttons()
 			++ncost;
 		}
 
+		
 
-		grid_ptr g(new grid(2 + ncost));
+		grid_ptr g(new grid(2 + ncost + (spell->damage() ? 1 : 0)));
 		g->set_hpad(6);
 		g->add_col(widget_ptr(new image_widget("abilities/" + a->icon(), 30, 30)));
 		g->add_col(widget_ptr(new label(a->name(), graphics::color_white())));
+
+		if(spell->damage() > 0) {
+			grid_ptr attack_grid(new grid(spell->damage()));
+			for(int n = 0; n != spell->damage(); ++n) {
+				attack_grid->add_col(widget_ptr(new gui_section_widget("attack-icon")));
+			}
+
+			g->add_col(attack_grid);
+		}
 
 		for(int n = 0; n != spell->cost().size(); ++n) {
 			for(int m = 0; m != spell->cost()[n]; ++m) {

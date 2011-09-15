@@ -30,6 +30,7 @@ public:
 		int id;
 		int life, armor, move;
 		bool expires_end_of_turn;
+		bool expires_on_state_change;
 	};
 
 	static const_unit_ptr get_prototype(const std::string& id);
@@ -64,6 +65,8 @@ public:
 	void set_moved(bool value=true) { has_moved_ = value; }
 
 	void new_turn();
+
+	void game_state_changed();
 
 	int damage_taken() const { return damage_taken_; }
 	void take_damage(int amount) { damage_taken_ += amount; }

@@ -22,6 +22,8 @@ public:
 
 	void set_attack(const hex::location& attack_target);
 
+	void set_dead();
+
 	void process();
 private:
 	point get_position_between_tiles(const hex::location& a, const hex::location& b, int percent) const;
@@ -31,6 +33,7 @@ private:
 	std::vector<hex::location> path_;
 	std::vector<hex::location> arrow_;
 	hex::location attack_target_;
+	bool dead_;
 	int time_in_path_;
 };
 

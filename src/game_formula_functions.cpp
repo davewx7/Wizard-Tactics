@@ -177,12 +177,12 @@ class unit_modification_command : public game_command_callable
 	unit_ptr target_;
 	unit::modification mod_;
 public:
-	unit_modification_command(unit_ptr target, const std::string& attr, int value)
+	unit_modification_command(unit_ptr target, const std::string& attr, int value, const std::string& expiration)
 	  : target_(target)
 	{
 		wml::node_ptr node(new wml::node("mod"));
 		node->set_attr(attr, formatter() << value);
-		node->set_attr("expires_end_of_turn", "yes");
+		node->set_attr(expiration, "yes");
 		mod_ = unit::modification(node);
 	}
 
@@ -196,8 +196,16 @@ FUNCTION_DEF(modify_unit_until_end_of_turn, 3, 3, "modify_unit_until_end_of_turn
 	const std::string attr(args()[1]->evaluate(variables).as_string());
 	const int value(args()[2]->evaluate(variables).as_int());
 
-	return variant(new unit_modification_command(target, attr, value));
+	return variant(new unit_modification_command(target, attr, value, "expires_end_of_turn"));
 END_FUNCTION_DEF(modify_unit_until_end_of_turn)
+
+FUNCTION_DEF(modify_unit_until_game_state_change, 3, 3, "modify_unit_until_game_state_change(unit, attribute, modification): modifies the unit's attribute by 'modification' until the next change of game state")
+	const unit_ptr target(args()[0]->evaluate(variables).convert_to<unit>());
+	const std::string attr(args()[1]->evaluate(variables).as_string());
+	const int value(args()[2]->evaluate(variables).as_int());
+
+	return variant(new unit_modification_command(target, attr, value, "expires_on_state_change"));
+END_FUNCTION_DEF(modify_unit_until_game_state_change)
 
 class set_command : public game_command_callable
 {
