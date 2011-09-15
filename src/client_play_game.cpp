@@ -674,6 +674,9 @@ void client_play_game::set_abilities_buttons()
 
 		if(spell->damage() > 0) {
 			grid_ptr attack_grid(new grid(spell->damage()));
+
+			//set hpad to something negative to make the icons overlap a little
+			attack_grid->set_hpad(-8);
 			for(int n = 0; n != spell->damage(); ++n) {
 				attack_grid->add_col(widget_ptr(new gui_section_widget("attack-icon")));
 			}
