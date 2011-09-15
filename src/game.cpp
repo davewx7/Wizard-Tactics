@@ -5,6 +5,7 @@
 #include "card.hpp"
 #include "foreach.hpp"
 #include "formatter.hpp"
+#include "formula_callable.hpp"
 #include "game.hpp"
 #include "game_formula_functions.hpp"
 #include "game_utils.hpp"
@@ -196,6 +197,20 @@ void game::handle_message(int nplayer, const simple_wml::string_span& type, simp
 		capture_tower(to_loc, u);
 
 		do_state_based_actions();
+
+		//every other unit gets a message telling it about this unit moving.
+		{
+		game_logic::map_formula_callable* callable = new game_logic::map_formula_callable;
+		variant holder(callable);
+		callable->add("move_from", variant(new location_object(from_loc)));
+		callable->add("move_to", variant(new location_object(to_loc)));
+		callable->add("moving_unit", variant(u.get()));
+		foreach(unit_ptr other_unit, units_) {
+			if(other_unit != u) {
+				other_unit->handle_event("other_unit_move", callable);
+			}
+		}
+		}
 
 		queue_message(wml::output(write()));
 
