@@ -96,7 +96,9 @@ unit::unit(wml::const_node_ptr node)
 	move_type_(movement_type::get(node->attr("movement_type"))),
 	can_summon_(node->attr("can_summon")),
 	can_cast_(node->attr("can_cast")),
-	can_produce_(wml::get_bool(node, "can_produce", false))
+	can_produce_(wml::get_bool(node, "can_produce", false)),
+	vars_(new game_logic::formula_variable_storage),
+	vars_turn_(new game_logic::formula_variable_storage)
 {
 	if(key_ == -1) {
 		assign_new_unit_key();
@@ -121,6 +123,16 @@ unit::unit(wml::const_node_ptr node)
 			const std::string event(i->first.begin() + 3, i->first.end());
 			handlers_[event] = game_logic::formula::create_optional_formula(i->second, symbols);
 		}
+	}
+
+	wml::const_node_ptr vars_node = node->get_child("vars");
+	if(vars_node) {
+		vars_->read(vars_node);
+	}
+
+	wml::const_node_ptr vars_turn_node = node->get_child("vars_turn");
+	if(vars_turn_node) {
+		vars_turn_->read(vars_turn_node);
 	}
 }
 
@@ -168,6 +180,14 @@ wml::node_ptr unit::write() const
 			node->set_attr("on_" + i->first, i->second->str());
 		}
 	}
+
+	wml::node_ptr vars_node(new wml::node("vars"));
+	vars_->write(vars_node);
+	node->add_child(vars_node);
+
+	wml::node_ptr vars_turn_node(new wml::node("vars_turn"));
+	vars_turn_->write(vars_turn_node);
+	node->add_child(vars_turn_node);
 
 	return node;
 }
@@ -286,6 +306,10 @@ variant unit::get_value(const std::string& key) const {
 		return variant(has_moved_);
 	} else if(key == "loc") {
 		return variant(new location_object(loc_));
+	} else if(key == "vars") {
+		return variant(vars_.get());
+	} else if(key == "vars_turn") {
+		return variant(vars_turn_.get());
 	} else {
 		return variant();
 	}

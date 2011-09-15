@@ -8,6 +8,7 @@
 
 #include "formula.hpp"
 #include "formula_callable.hpp"
+#include "formula_variable_storage.hpp"
 #include "movement_type.hpp"
 #include "tile_logic.hpp"
 #include "unit_ability.hpp"
@@ -118,6 +119,8 @@ private:
 	bool can_produce_;
 
 	std::vector<unit_ability_ptr> abilities_;
+
+	game_logic::formula_variable_storage_ptr vars_, vars_turn_;
 
 	typedef std::map<std::string, game_logic::const_formula_ptr> handlers_map;
 	handlers_map handlers_;
