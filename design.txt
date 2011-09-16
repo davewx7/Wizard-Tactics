@@ -1,3 +1,15 @@
+Design Key:
+TYPE_OF_COST_TO_RECRUIT
+
+is_done unit_name cost
+attack/life/move
+armor
+
+additional_abilities_and_information
+
+---
+
+
 HONOR
 
 Duelist of Tenser 4
@@ -9,9 +21,10 @@ When Duelist of Tenser is attacked, if it has no other units adjacent to it, and
 
 --
 
-✔ Anselm High Guard 6 #done name cost 
-2/6/3 #attack/life/move
-defense: 2 #armor
+✔ Anselm High Guard 6 
+2/6/3
+defense: 2
+
 counterstrike
 
 --
@@ -34,6 +47,7 @@ range 2
 Ilia Shield Maiden 4
 0/3/3
 defense: 1
+
 friendly units adjacent to Ilia Shield Maiden get +1 defense
 
 --
@@ -208,10 +222,10 @@ Hasty (can move on the turn it is summoned)
 
 --
 
-Goblin Rogue 3
+✔ Goblin Rogue 3
 1/2/3
 
-Refresh: F
+Refresh: FF
 
 --
 
