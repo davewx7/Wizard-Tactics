@@ -9,10 +9,10 @@ When Duelist of Tenser is attacked, if it has no other units adjacent to it, and
 
 --
 
-Anselm High Guard 6 #name cost
+✔ Anselm High Guard 6 #done name cost 
 2/6/3 #attack/life/move
 defense: 2 #armor
-counterstrike ✔
+counterstrike
 
 --
 
@@ -21,6 +21,13 @@ High Elf Archer 5
 
 range 2
 On Guard: 1 -- when this ability is activated, High Elf Archer does 2 damage to the next enemy unit that moves within 2 spaces of High Elf Archer this turn
+
+--
+
+✔ Elvish Archer 3
+2/2/3
+
+range 2
 
 --
 
@@ -48,7 +55,7 @@ range 2
 
 --
 
-Warrior 4
+✔ Warrior 4
 2/4/3
 
 --
@@ -117,43 +124,43 @@ Attack has range 2, and ignores defense.
 
 BLOOD
 
-Blood Hound 3
+✔ Blood Hound 3 
 1/3/3
 
-+1 damage for each damage on target ✔
++1 damage for each damage on target
 
 --
 
-Dark Adept 3
+✔ Dark Adept 3 
 2/2/3
 casts Blood
 attack range 2, costs B
 
 --
 
-Dark Summoner 3
+✔ Dark Summoner 3
 0/3/3
 summons Blood
 
 --
 
-Death Knight 6
+✔ Death Knight 6
 3/5/3
 
 --
 
-Skeleton 2
+✔ Skeleton 2
 1/2/3
 
 --
 
-Vampire Bat 3
+✔ Vampire Bat 3
 1/2/4
 Flying
 
 --
 
-Vampire 3
+✔ Vampire 3
 1/3/3
 +B for every damage vampire inflicts
 
@@ -187,7 +194,7 @@ Target unit gets -2 defense for the rest of the turn.
 
 FOOD
 
-Dire Wolf 4
+✔ Dire Wolf 4
 2/3/4
 
 F: +1 movement
@@ -208,7 +215,7 @@ Refresh: F
 
 --
 
-Orcish Grunt 4
+✔ Orcish Grunt 4
 3/3/3
 
 --
