@@ -126,16 +126,23 @@ FUNCTION_DEF(get_unit_at_loc, 1, 1, "get_unit_at_loc(loc): yields the unit at th
 	return variant();
 END_FUNCTION_DEF(get_unit_at_loc)
 
-FUNCTION_DEF(get_adjacent_units, 1, 1, "get_adjacent_units(unit): yields all units adjacent to 'unit'")
-	hex::location loc;
-	variant arg = EVAL_ARG(0);
-	unit_ptr u(arg.try_convert<unit>());
+namespace {
+
+//function to parse an argument to a location.
+//if the argument is a unit, the location of the unit will be taken.
+hex::location arg_to_loc(variant v) {
+	unit_ptr u(v.try_convert<unit>());
 	if(u == NULL) {
-		const location_object* loc_obj = arg.convert_to<const location_object>();
-		loc = loc_obj->loc();
+		const location_object* loc_obj = v.convert_to<const location_object>();
+		return loc_obj->loc();
 	} else {
-		loc = u->loc();
+		return u->loc();
 	}
+}
+}
+
+FUNCTION_DEF(get_adjacent_units, 1, 1, "get_adjacent_units(unit): yields all units adjacent to 'unit'")
+	hex::location loc = arg_to_loc(EVAL_ARG(0));
 
 	std::vector<variant> v;
 
@@ -150,6 +157,10 @@ FUNCTION_DEF(get_adjacent_units, 1, 1, "get_adjacent_units(unit): yields all uni
 
 	return variant(&v);
 END_FUNCTION_DEF(get_adjacent_units)
+
+FUNCTION_DEF(distance_between, 2, 2, "distance_between(loc1, loc2): gives the number of tiles between the two locations")
+	return variant(hex::distance_between(arg_to_loc(EVAL_ARG(0)), arg_to_loc(EVAL_ARG(1))));
+END_FUNCTION_DEF(distance_between)
 
 class free_attack_command : public game_command_callable
 {
