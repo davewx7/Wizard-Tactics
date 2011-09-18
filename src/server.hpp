@@ -2,7 +2,7 @@
 #define SERVER_HPP_INCLUDED
 
 #include "game.hpp"
-#include "simple_wml.hpp"
+#include "tinyxml.h"
 
 #include <map>
 #include <vector>
@@ -26,7 +26,7 @@ private:
 	void handle_receive(socket_ptr socket, buffer_ptr buf, const boost::system::error_code& e, size_t nbytes);
 	void handle_incoming_data(socket_ptr socket, const char* i1, const char* i2);
 	void handle_message(socket_ptr socket, const std::vector<char>& msg);
-	void handle_message(socket_ptr socket, simple_wml::document& msg);
+	void handle_message(socket_ptr socket, const TiXmlElement& msg);
 
 	void send_msg(socket_ptr socket, const std::string& msg);
 	void handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes);
@@ -43,14 +43,18 @@ private:
 
 	typedef boost::shared_ptr<game_info> game_info_ptr;
 
-	struct client_info {
+	struct socket_info {
 		std::vector<char> partial_message;
 		std::string nick;
+	};
+
+	struct client_info {
 		game_info_ptr game;
 		int nplayer;
 	};
 
-	std::map<socket_ptr, client_info> clients_;
+	std::map<socket_ptr, socket_info> connections_;
+	std::map<std::string, client_info> clients_;
 	std::vector<game_info_ptr> games_;
 };
 

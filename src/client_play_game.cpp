@@ -30,6 +30,7 @@
 #include "wml_node.hpp"
 #include "wml_utils.hpp"
 #include "wml_writer.hpp"
+#include "xml_writer.hpp"
 
 namespace {
 class unit_avatar_widget : public gui::widget
@@ -518,7 +519,7 @@ void client_play_game::handle_mouse_button_down(const SDL_MouseButtonEvent& even
 		set_abilities_buttons();
 
 		if(state_ == STATE_USE_ABILITIES) {
-			network::send("[end_turn]\n[/end_turn]\n");
+			network::send("<end_turn/>\n");
 		}
 		return;
 	}
@@ -532,8 +533,8 @@ void client_play_game::handle_mouse_button_down(const SDL_MouseButtonEvent& even
 				try {
 					wml::node_ptr result = player.spells[card].card->use_card(*this);
 					if(result.get() != NULL) {
-						network::send(wml::output(result));
-						network::send("[end_turn]\n[/end_turn]\n");
+						network::send(wml::output_xml(result));
+						network::send("<end_turn/>\n");
 					}
 				} catch(action_cancellation_exception& e) {
 				}
@@ -570,7 +571,7 @@ void client_play_game::handle_mouse_button_down(const SDL_MouseButtonEvent& even
 					wml::node_ptr move_node(new wml::node("move"));
 					move_node->add_child(hex::write_location("from", moving_unit_->loc()));
 					move_node->add_child(hex::write_location("to", loc));
-					network::send(wml::output(move_node));
+					network::send(wml::output_xml(move_node));
 
 					const hex::location src_loc = moving_unit_->loc();
 					moving_unit_->set_loc(loc);
@@ -602,7 +603,7 @@ void client_play_game::handle_mouse_button_down(const SDL_MouseButtonEvent& even
 						set_abilities_buttons();
 
 						if(state_ == STATE_USE_ABILITIES) {
-							network::send("[end_turn]\n[/end_turn]\n");
+							network::send("<end_turn/>\n");
 						}
 					}
 
@@ -626,7 +627,7 @@ void client_play_game::end_turn()
 {
 	const std::string end_turn = state_ == STATE_PLAY_CARDS ? "skip=\"yes\"\n" : "";
 	set_prompt("");
-	network::send("[end_turn]\n" + end_turn + "[/end_turn]\n");
+	network::send("<end_turn " + end_turn + "></end_turn>\n");
 }
 
 void client_play_game::cancel_action()
@@ -732,8 +733,8 @@ void client_play_game::activate_ability(unit_ptr u, unit_ability_ptr a)
 	try {
 		wml::node_ptr result = a->use_ability(*u, *this);
 		if(result.get() != NULL) {
-			network::send(wml::output(result));
-			network::send("[end_turn]\n[/end_turn]\n");
+			network::send(wml::output_xml(result));
+			network::send("<end_turn/>\n");
 
 			moving_unit_.reset();
 			current_routes_.reset();

@@ -35,6 +35,8 @@
 #include "wml_schema.hpp"
 #include "wml_utils.hpp"
 
+#include "xml_parser.hpp"
+
 namespace wml
 {
 
@@ -559,12 +561,15 @@ node_ptr parse_wml_internal(const std::string& error_context, const std::string&
 
 node_ptr parse_wml(const std::string& doc, bool must_have_doc, const schema* schema)
 {
-	return parse_wml_internal("", doc, must_have_doc, schema);
+	return parse_xml(doc);
+//	return parse_wml_internal("", doc, must_have_doc, schema);
 }
 
 node_ptr parse_wml_from_file(const std::string& fname, const schema* schema, bool must_have_doc)
 {
 	const std::string data = preprocess(sys::read_file(fname));
+	return parse_xml(data);
+/*
 	if(data.empty()) {
 		ASSERT_LOG(false, "Could not read file: " << fname);
 	}
@@ -599,6 +604,7 @@ node_ptr parse_wml_from_file(const std::string& fname, const schema* schema, boo
 	} catch(...) {
 		ASSERT_LOG(false, "Unknown error loading WML in " << fname);
 	}
+	*/
 }
 
 parse_error::parse_error(const std::string& msg)

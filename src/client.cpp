@@ -20,6 +20,7 @@
 #include "raster.hpp"
 #include "terrain.hpp"
 #include "texture.hpp"
+#include "unit_test.hpp"
 #include "wml_parser.hpp"
 #include "wml_writer.hpp"
 
@@ -43,6 +44,9 @@ int main(int argc, char** argv)
 	std::string nick = "david";
 	std::string deck = "deck.cfg";
 
+	std::string utility_program;
+	std::vector<std::string> util_args;
+
 	bool is_host = false;
 	bool is_joining = false;
 	for(int n = 0; n != argc; ++n) {
@@ -55,6 +59,15 @@ int main(int argc, char** argv)
 		} else if(arg == "--deck" && n+1 != argc) {
 			++n;
 			deck = argv[n];
+		} else if(arg == "--utility" && n + 1 != argc) {
+			++n;
+			utility_program = argv[n];
+			for(++n; n < argc; ++n) {
+				const std::string arg(argv[n]);
+				util_args.push_back(arg);
+			}
+
+			break;
 		}
 	}
 
@@ -81,14 +94,19 @@ int main(int argc, char** argv)
 
 	network::manager network_manager;
 
+	if(utility_program.empty() == false) {
+		test::run_utility(utility_program, util_args);
+		return 0;
+	}
+
 	network::connect("localhost", "17000");
 
-	network::send("[login]\nname=\"" + nick +"\"\n[/login]\n");
+	network::send("<login name=\"" + nick +"\"></login>\n");
 
 	if(is_joining) {
-		network::send("[join_game]\n[/join_game]\n");
+		network::send("<join_game/>\n");
 	} else if(is_host) {
-		network::send("[create_game]\n[/create_game]\n");
+		network::send("<create_game/>\n");
 		for(;;) {
 			wml::const_node_ptr msg = network::receive();
 			if(msg && msg->name() == "join_game") {
@@ -97,10 +115,10 @@ int main(int argc, char** argv)
 			SDL_Delay(1000);
 			std::cerr << "waiting...\n";
 		}
-		network::send("[setup]\n[/setup]\n");
+		network::send("<setup/>\n");
 	} else {
-		network::send("[create_game]\nbots=\"1\"\n[/create_game]\n");
-		network::send("[setup]\n[/setup]\n");
+		network::send("<create_game bots=\"1\"/>\n");
+		network::send("<setup/>\n");
 	}
 
 	network::send(sys::read_file(deck));

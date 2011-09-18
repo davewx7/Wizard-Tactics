@@ -7,9 +7,9 @@
 #include "card.hpp"
 #include "city.hpp"
 #include "formula_callable.hpp"
-#include "simple_wml.hpp"
 #include "tile.hpp"
 #include "tile_logic.hpp"
+#include "tinyxml.h"
 #include "unit.hpp"
 #include "variant.hpp"
 #include "wml_node_fwd.hpp"
@@ -22,7 +22,7 @@ public:
 	game();
 	explicit game(wml::const_node_ptr node);
 	wml::node_ptr write() const;
-	void handle_message(int nplayer, const simple_wml::string_span& type, simple_wml::node& msg);
+	void handle_message(int nplayer, const TiXmlElement& msg);
 
 	struct message {
 		std::vector<int> recipients;
@@ -80,8 +80,8 @@ public:
 private:
 	variant get_value(const std::string& key) const;
 
-	void play_card(int nplayer, simple_wml::node& msg, int speed=-1);
-	void resolve_card(int nplayer, const_card_ptr card, simple_wml::node& msg);
+	void play_card(int nplayer, const TiXmlElement& msg, int speed=-1);
+	void resolve_card(int nplayer, const_card_ptr card, const TiXmlElement& msg);
 	bool add_city(city_ptr new_city);
 	void setup_game();
 	bool started_;

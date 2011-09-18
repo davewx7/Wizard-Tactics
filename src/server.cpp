@@ -9,6 +9,16 @@
 #include "foreach.hpp"
 #include "server.hpp"
 
+namespace
+{
+int xml_int(const TiXmlElement& el, const char* s)
+{
+	int res = 0;
+	el.QueryIntAttribute(s, &res);
+	return res;
+}
+}
+
 using boost::asio::ip::tcp;
 
 server::game_info::game_info() : game_state(new game)
@@ -60,7 +70,7 @@ void server::handle_receive(socket_ptr socket, buffer_ptr buf, const boost::syst
 
 void server::handle_incoming_data(socket_ptr socket, const char* i1, const char* i2)
 {
-	client_info& info = clients_[socket];
+	socket_info& info = connections_[socket];
 	const char* string_terminator = std::find(i1, i2, 0);
 	info.partial_message.insert(info.partial_message.end(), i1, string_terminator);
 	if(string_terminator != i2) {
@@ -73,47 +83,51 @@ void server::handle_incoming_data(socket_ptr socket, const char* i1, const char*
 
 void server::handle_message(socket_ptr socket, const std::vector<char>& msg)
 {
-	try {
-		std::cerr << "MSG: " << &msg[0] << "\n";
-		simple_wml::document doc(&msg[0], simple_wml::INIT_STATIC);
-		handle_message(socket, doc);
-	} catch(simple_wml::error& e) {
-		std::cerr << "INVALID WML RECEIVED\n";
+	std::cerr << "MSG: " << &msg[0] << "\n";
+	TiXmlDocument doc;
+	doc.Parse(&msg[0]);
+	if(doc.Error()) {
+		std::cerr << "INVALID XML RECEIVED\n";
+		return;
 	}
+	handle_message(socket, *doc.RootElement());
 }
 
-void server::handle_message(socket_ptr socket, simple_wml::document& msg)
+void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 {
-	simple_wml::node& node = msg.root();
-	const simple_wml::string_span& name = node.first_child();
-	const simple_wml::node* first_node = node.first_child_node();
-	client_info& info = clients_[socket];
+	const std::string name = node.Value();
+
+	socket_info& info = connections_[socket];
 	if(name == "login") {
-		info.nick = first_node->attr("name").to_string();
+		info.nick = node.Attribute("name");
 	} else if(name == "create_game") {
 		game_info_ptr new_game(new game_info);
 		const game_context context(new_game->game_state.get());
 		new_game->clients.push_back(socket);
 		new_game->game_state->add_player(info.nick);
-		const int nbots = first_node->attr("bots").to_int();
+		const int nbots = xml_int(node, "bots");
 		for(int n = 0; n != nbots; ++n) {
 			new_game->game_state->add_ai_player("bot");
 		}
+
+		client_info& cli_info = clients_[info.nick];
 		
-		info.game = new_game;
-		info.nplayer = 0;
+		cli_info.game = new_game;
+		cli_info.nplayer = 0;
 	} else if(name == "join_game") {
 		std::cerr << "join_game...\n";
-		for(std::map<socket_ptr, client_info>::iterator i = clients_.begin();
+		client_info& cli_info = clients_[info.nick];
+		for(std::map<std::string, client_info>::iterator i = clients_.begin();
 		    i != clients_.end(); ++i) {
 			if(i->second.game && i->second.game->game_state->started() == false) {
 				const game_context context(i->second.game->game_state.get());
 				i->second.game->clients.push_back(socket);
 				i->second.game->game_state->add_player(info.nick);
-				info.nplayer = i->second.game->clients.size() - 1;
-				info.game = i->second.game;
+				cli_info.nplayer = i->second.game->clients.size() - 1;
+				cli_info.game = i->second.game;
 
-				std::string join_game(msg.output());
+				std::string join_game;
+				join_game << node;
 				join_game.resize(join_game.size()+1);
 				join_game[join_game.size()-1] = 0;
 				send_msg(i->second.game->clients.front(), join_game);
@@ -121,23 +135,29 @@ void server::handle_message(socket_ptr socket, simple_wml::document& msg)
 			}
 		}
 	} else {
-		if(info.game && node.first_child_node()) {
-			std::cerr << "GOT MESSAGE FROM " << info.nplayer << ": " << msg.output() << "\n";
-			const game_context context(info.game->game_state.get());
-			info.game->game_state->handle_message(info.nplayer, node.first_child(), *node.first_child_node());
+		if(info.nick.empty()) {
+			std::cerr << "USER WITH NO NICK SENT UNRECOGNIZED DATA\n";
+			return;
+		}
+
+		client_info& cli_info = clients_[info.nick];
+		if(cli_info.game) {
+			std::cerr << "GOT MESSAGE FROM " << cli_info.nplayer << ": " << node << "\n";
+			const game_context context(cli_info.game->game_state.get());
+			cli_info.game->game_state->handle_message(cli_info.nplayer, node);
 
 			std::vector<game::message> game_response;
-			info.game->game_state->swap_outgoing_messages(game_response);
+			cli_info.game->game_state->swap_outgoing_messages(game_response);
 			foreach(game::message& msg, game_response) {
 				msg.contents.push_back(0);
 				if(msg.recipients.empty()) {
-					foreach(const socket_ptr& sock, info.game->clients) {
+					foreach(const socket_ptr& sock, cli_info.game->clients) {
 						send_msg(sock, msg.contents);
 					}
 				} else {
 					foreach(int player, msg.recipients) {
-						ASSERT_LT(player, info.game->clients.size());
-						send_msg(info.game->clients[player], msg.contents);
+						ASSERT_LT(player, cli_info.game->clients.size());
+						send_msg(cli_info.game->clients[player], msg.contents);
 					}
 				}
 			}
@@ -161,5 +181,5 @@ void server::handle_send(socket_ptr socket, const boost::system::error_code& e, 
 
 void server::disconnect(socket_ptr socket)
 {
-	clients_.erase(socket);
+	connections_.erase(socket);
 }

@@ -2,8 +2,8 @@
 
 #include "client_network.hpp"
 #include "wml_node.hpp"
-#include "wml_parser.hpp"
-#include "wml_writer.hpp"
+#include "xml_parser.hpp"
+#include "xml_writer.hpp"
 
 namespace network
 {
@@ -68,7 +68,7 @@ void send(const std::string& msg)
 void send(wml::const_node_ptr node)
 {
 	std::string str;
-	wml::write(node, str);
+	wml::write_xml(node, str);
 	send(str);
 }
 
@@ -93,7 +93,7 @@ wml::const_node_ptr receive()
 	if(end != current_message.end()) {
 		std::string msg(current_message.begin(), end);
 		current_message.erase(current_message.begin(), end+1);
-		return wml::parse_wml(msg);
+		return wml::parse_xml(msg);
 	}
 
 	return wml::const_node_ptr();

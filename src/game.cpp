@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <string>
 
 #include "ai_player.hpp"
 #include "asserts.hpp"
@@ -18,9 +19,35 @@
 #include "wml_parser.hpp"
 #include "wml_utils.hpp"
 #include "wml_writer.hpp"
+#include "xml_writer.hpp"
 
 namespace {
 game* current_game = NULL;
+
+hex::location parse_loc_from_xml(const TiXmlElement& el)
+{
+	int x = 0, y = 0;
+	el.QueryIntAttribute("x", &x);
+	el.QueryIntAttribute("y", &y);
+	return hex::location(x, y);
+}
+
+int xml_int(const TiXmlElement& el, const char* s)
+{
+	int res = 0;
+	el.QueryIntAttribute(s, &res);
+	return res;
+}
+
+std::string xml_str(const TiXmlElement& el, const char* s)
+{
+	const char* attr = el.Attribute(s);
+	if(!attr) {
+		return "";
+	}
+
+	return attr;
+}
 }
 
 game_context::game_context(game* g) : old_game_(current_game)
@@ -155,40 +182,41 @@ wml::node_ptr game::write() const
 	return res;
 }
 
-void game::handle_message(int nplayer, const simple_wml::string_span& type, simple_wml::node& msg)
+void game::handle_message(int nplayer, const TiXmlElement& msg)
 {
+	const std::string type = msg.Value();
 	if(type == "setup") {
 		setup_game();
-		queue_message(wml::output(write()));
+		queue_message(wml::output_xml(write()));
 
 		ASSERT_GE(players_.size(), 1);
-		queue_message(formatter() << "[new_turn]\nplayer=\"" << players_.front().name << "\"\n[/new_turn]\n");
+		queue_message(formatter() << "<new_turn player=\"" << players_.front().name << "\"></new_turn>\n");
 		state_ = STATE_PLAYING;
 		player_casting_ = player_turn_ = 0;
 	} else if(type == "spells") {
 		std::cerr << "READ DECK FOR " << nplayer << "\n";
 		ASSERT_INDEX_INTO_VECTOR(nplayer, players_);
-		players_[nplayer].spells = read_deck(msg.attr("spells").to_string());
+		players_[nplayer].spells = read_deck(msg.Attribute("spells"));
 
 		players_[nplayer].resource_gain.resize(resource::num_resources());
 		int num_resources = resource::num_resources();
-		util::split_into_ints(msg.attr("resource_gain").to_string().c_str(), &players_[nplayer].resource_gain[0], &num_resources);
+		util::split_into_ints(msg.Attribute("resource_gain"), &players_[nplayer].resource_gain[0], &num_resources);
 
 		players_[nplayer].resources = players_[nplayer].resource_gain;
 
 		draw_hand(nplayer);
-		queue_message(wml::output(write()));
+		queue_message(wml::output_xml(write()));
 	} else if(type == "move") {
-		const simple_wml::node* from = msg.child("from");
-		const simple_wml::node* to = msg.child("to");
+		const TiXmlElement* from = msg.FirstChildElement("from");
+		const TiXmlElement* to = msg.FirstChildElement("to");
 		ASSERT_LOG(from && to, "message format of move illegal");
-		const hex::location from_loc(from->attr("x").to_int(), from->attr("y").to_int());
-		const hex::location to_loc(to->attr("x").to_int(), to->attr("y").to_int());
+		const hex::location from_loc(parse_loc_from_xml(*from));
+		const hex::location to_loc(parse_loc_from_xml(*to));
 
 		wml::node_ptr anim_node(new wml::node("move_anim"));
 		anim_node->add_child(hex::write_location("from", from_loc));
 		anim_node->add_child(hex::write_location("to", to_loc));
-		queue_message(wml::output(anim_node));
+		queue_message(wml::output_xml(anim_node));
 
 		unit_ptr u = get_unit_at(from_loc);
 		ASSERT_LOG(u.get(), "Could not find unit at from loc");
@@ -212,13 +240,13 @@ void game::handle_message(int nplayer, const simple_wml::string_span& type, simp
 		}
 		}
 
-		queue_message(wml::output(write()));
+		queue_message(wml::output_xml(write()));
 
 	} else if(type == "play") {
 		play_card(nplayer, msg);
 		spell_casting_passes_ = 0;
 	} else if(type == "end_turn") {
-		const bool skipping = msg.attr("skip") == "yes";
+		const bool skipping = xml_str(msg, "skip") == "yes";
 		if(skipping) {
 			++spell_casting_passes_;
 		} else {
@@ -305,18 +333,23 @@ void game::handle_message(int nplayer, const simple_wml::string_span& type, simp
 			spell_casting_passes_ = 0;
 		}
 		
-		queue_message(wml::output(write()));
-		queue_message(formatter() << "[new_turn]\nplayer=\"" << players_[player_casting_].name << "\"\n[/new_turn]\n");
+		queue_message(wml::output_xml(write()));
+		queue_message(formatter() << "<new_turn player=\"" << players_[player_casting_].name << "\"></new_turn>\n");
 
 		foreach(boost::shared_ptr<ai_player> ai, ai_) {
 			std::vector<wml::node_ptr> nodes = ai->play();
 
 			while(nodes.empty() == false) {
 				foreach(wml::node_ptr node, nodes) {
-					std::string msg(wml::output(node));
+					std::string msg(wml::output_xml(node));
 					std::cerr << "AI MESSAGE: " << msg << "\n";
-					simple_wml::document doc(msg.c_str(), simple_wml::INIT_STATIC);
-					handle_message(ai->player_id(), doc.root().first_child(), *doc.root().first_child_node());
+
+					TiXmlDocument xml_doc;
+					xml_doc.Parse(msg.c_str());
+
+					TiXmlElement* doc = xml_doc.RootElement();
+
+					handle_message(ai->player_id(), *doc);
 				}
 
 				nodes = ai->play();
@@ -325,9 +358,9 @@ void game::handle_message(int nplayer, const simple_wml::string_span& type, simp
 	}
 }
 
-void game::play_card(int nplayer, simple_wml::node& msg, int speed)
+void game::play_card(int nplayer, const TiXmlElement& msg, int speed)
 {
-	const std::string type = msg.attr("spell").to_string();
+	const std::string type = xml_str(msg, "spell");
 
 	const_card_ptr card = card::get(type);
 	ASSERT_LOG(card.get() != NULL, "CARD " << type << " NOT FOUND " << nplayer);
@@ -335,8 +368,8 @@ void game::play_card(int nplayer, simple_wml::node& msg, int speed)
 	ASSERT_INDEX_INTO_VECTOR(nplayer, players_);
 	player& p = players_[nplayer];
 
-	if(msg.has_attr("caster")) {
-		const int caster_key = msg.attr("caster").to_int();
+	if(msg.Attribute("caster")) {
+		const int caster_key = xml_int(msg, "caster");
 		unit_ptr caster;
 		foreach(unit_ptr u, units_) {
 			if(u->key() == caster_key) {
@@ -368,14 +401,14 @@ void game::play_card(int nplayer, simple_wml::node& msg, int speed)
 	resolve_card(nplayer, card, msg);
 	do_state_based_actions();
 
-	queue_message(wml::output(write()));
+	queue_message(wml::output_xml(write()));
 }
 
 namespace {
 class card_info_callable : public resolve_card_info
 {
 	game& g_;
-	const simple_wml::node& msg_;
+	const TiXmlElement& msg_;
 
 	variant get_value(const std::string& key) const {
 		if(key == "caster") {
@@ -386,14 +419,14 @@ class card_info_callable : public resolve_card_info
 				return variant();
 			}
 		} else if(key == "target") {
-			const simple_wml::node* t = msg_.child("target");
+			const TiXmlElement* t = msg_.FirstChildElement("target");
 			if(t) {
-				return variant(new location_object(hex::location(t->attr("x").to_int(), t->attr("y").to_int())));
+				return variant(new location_object(parse_loc_from_xml(*t)));
 			}
 		} else if(key == "targets") {
 			std::vector<variant> v;
-			foreach(const simple_wml::node* t, msg_.children("target")) {
-				v.push_back(variant(new location_object(hex::location(t->attr("x").to_int(), t->attr("y").to_int()))));
+			for(const TiXmlElement* t = msg_.FirstChildElement("target"); t != NULL; t = t->NextSiblingElement("target")) {
+				v.push_back(variant(new location_object(parse_loc_from_xml(*t))));
 			}
 
 			return variant(&v);
@@ -407,8 +440,8 @@ class card_info_callable : public resolve_card_info
 	std::vector<hex::location> targets() const
 	{
 		std::vector<hex::location> v;
-		foreach(const simple_wml::node* t, msg_.children("target")) {
-			v.push_back(hex::location(t->attr("x").to_int(), t->attr("y").to_int()));
+		for(const TiXmlElement* t = msg_.FirstChildElement("target"); t != NULL; t = t->NextSiblingElement("target")) {
+			v.push_back(parse_loc_from_xml(*t));
 		}
 
 		return v;
@@ -416,7 +449,7 @@ class card_info_callable : public resolve_card_info
 
 	unit_ptr caster() const
 	{
-		const int caster_key = msg_.attr("caster").to_int();
+		const int caster_key = xml_int(msg_, "caster");
 		foreach(unit_ptr u, g_.units()) {
 			if(u->key() == caster_key) {
 				return u;
@@ -427,36 +460,30 @@ class card_info_callable : public resolve_card_info
 	}
 
 public:
-	card_info_callable(game& g, const simple_wml::node& msg) : g_(g), msg_(msg)
+	card_info_callable(game& g, const TiXmlElement& msg) : g_(g), msg_(msg)
 	{}
 };
 
 }
 
-void game::resolve_card(int nplayer, const_card_ptr card, simple_wml::node& msg)
+void game::resolve_card(int nplayer, const_card_ptr card, const TiXmlElement& msg)
 {
 	card_info_callable* callable_context = new card_info_callable(*this, msg);
 	const variant context_holder(callable_context);
 	card->resolve_card(callable_context);
 
 	std::cerr << "RESOLVING CARD...\n";
-	foreach(const simple_wml::node* land, msg.children("land")) {
-		hex::location loc(land->attr("x").to_int(), land->attr("y").to_int());
-		tile* t = get_tile(loc.x(), loc.y());
-		ASSERT_LOG(t, "ILLEGAL TILE LOCATION: " << loc);
-		*t = tile(loc.x(), loc.y(), land->attr("land").to_string());
-		assign_tower_owners();
-	}
 
-	foreach(const simple_wml::node* monster, msg.children("monster")) {
-		hex::location loc(monster->attr("x").to_int(), monster->attr("y").to_int());
-		units_.push_back(unit::build_from_prototype(monster->attr("type").to_string(), nplayer, loc));
+	for(const TiXmlElement* monster = msg.FirstChildElement("monster"); monster != NULL; monster = monster->NextSiblingElement("monster")) {
+		hex::location loc(parse_loc_from_xml(*monster));
+
+		units_.push_back(unit::build_from_prototype(monster->Attribute("type"), nplayer, loc));
 		units_.back()->set_moved();
 		units_.back()->handle_event("summoned");
 	}
 
-	foreach(const simple_wml::node* target, msg.children("target")) {
-		hex::location loc(target->attr("x").to_int(), target->attr("y").to_int());
+	for(const TiXmlElement* target = msg.FirstChildElement("target"); target != NULL; target = target->NextSiblingElement("target")) {
+		hex::location loc(parse_loc_from_xml(*target));
 		unit_ptr u = get_unit_at(loc);
 		if(u.get() != NULL) {
 			if(card->modification()) {
@@ -577,7 +604,7 @@ void game::send_error(const std::string& msg, int nplayer)
 {
 	wml::node_ptr node(new wml::node("error"));
 	node->set_attr("message", msg);
-	queue_message(wml::output(node), nplayer);
+	queue_message(wml::output_xml(node), nplayer);
 }
 
 bool game::add_city(city_ptr new_city)
@@ -764,7 +791,7 @@ bool game::do_state_based_actions()
 	foreach(unit_ptr& u, units_) {
 		if(u->damage_taken() >= u->life()) {
 			const wml::const_node_ptr death_anim_node(hex::write_location("death_anim", u->loc()));
-			queue_message(wml::output(death_anim_node));
+			queue_message(wml::output_xml(death_anim_node));
 
 			actions = true;
 			u.reset();

@@ -3,6 +3,7 @@
 
 #include "ai_player.hpp"
 #include "asserts.hpp"
+#include "filesystem.hpp"
 #include "foreach.hpp"
 #include "game.hpp"
 #include "game_utils.hpp"
@@ -14,6 +15,7 @@
 #include "wml_node.hpp"
 #include "wml_parser.hpp"
 #include "wml_writer.hpp"
+#include "xml_parser.hpp"
 
 namespace {
 
@@ -54,7 +56,7 @@ std::vector<wml::node_ptr> default_ai_player::play()
 	std::vector<wml::node_ptr> result;
 	if(!set_deck_) {
 		set_deck_ = true;
-		result.push_back(wml::parse_wml_from_file("deck.cfg"));
+		result.push_back(wml::parse_xml(sys::read_file("deck.cfg")));
 		return result;
 	}
 
