@@ -29,7 +29,7 @@ counterstrike
 
 --
 
-High Elf Archer 5
+✔ High Elf Archer 5
 2/4/3
 
 range 2
