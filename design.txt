@@ -187,14 +187,14 @@ When an enemy unit is destroyed by Vampire Lord, replace it with a Vampire
 
 --
 
-Wraith 7
+✔ Wraith 7
 2/3/4
 Flying
 When Wraith does damage it deals it as loss of life, and gains life equal to damage it does.
 
 --
 
-Flesh Wound 1
+✔ Flesh Wound 1
 range 2
 
 Deals 1 damage to target
