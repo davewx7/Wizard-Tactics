@@ -34,7 +34,7 @@ const_anim_set_ptr get_animations_for_unit(const std::string& id, int color)
 {
 	const_anim_set_ptr& a = anim_set_cache[std::make_pair(id, color)];
 	if(a.get() == NULL) {
-		a.reset(new unit_animation_set(wml::parse_wml_from_file("data/units/" + id + ".cfg"), color));
+		a.reset(new unit_animation_set(wml::parse_wml_from_file("data/units/" + id + ".xml"), color));
 	}
 
 	return a;

@@ -22,6 +22,7 @@ public:
 	bool is_ability_usable(unit& u, card_selector& selector) const;
 	wml::node_ptr use_ability(unit& u, card_selector& selector);
 
+	const std::string& id() const { return id_; }
 	const std::string& name() const { return name_; }
 	const std::string& icon() const { return icon_; }
 

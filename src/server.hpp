@@ -4,6 +4,7 @@
 #include "game.hpp"
 #include "tinyxml.h"
 
+#include <deque>
 #include <map>
 #include <vector>
 
@@ -33,12 +34,16 @@ private:
 
 	void disconnect(socket_ptr socket);
 
+	void heartbeat();
+
 	boost::asio::ip::tcp::acceptor acceptor_;
+
+	boost::asio::deadline_timer timer_;
 
 	struct game_info {
 		game_info();
 		boost::intrusive_ptr<game> game_state;
-		std::vector<socket_ptr> clients;
+		std::vector<std::string> clients;
 	};
 
 	typedef boost::shared_ptr<game_info> game_info_ptr;
@@ -51,7 +56,13 @@ private:
 	struct client_info {
 		game_info_ptr game;
 		int nplayer;
+
+		std::deque<std::string> msg_queue;
 	};
+
+	void queue_msg(const std::string& nick, const std::string& msg);
+
+	std::map<socket_ptr, std::string> waiting_connections_;
 
 	std::map<socket_ptr, socket_info> connections_;
 	std::map<std::string, client_info> clients_;

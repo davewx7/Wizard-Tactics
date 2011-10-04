@@ -56,6 +56,9 @@ public:
 	virtual ~card();
 
 	wml::node_ptr use_card(card_selector& client) const;
+	wml::node_ptr use_card(unit* caster, int side, const std::vector<hex::location>& targets) const;
+
+	virtual bool is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const = 0;
 
 	const std::string& id() const { return id_; }
 	const std::string& name() const { return name_; }
@@ -83,6 +86,7 @@ protected:
 	void handle_event(const std::string& name, const game_logic::formula_callable* callable=NULL) const;
 private:
 	virtual wml::node_ptr play_card(card_selector& client) const = 0;
+	virtual wml::node_ptr play_card(unit* caster, int side, const std::vector<hex::location>& targets) const = 0;
 	std::string id_, name_;
 	boost::shared_ptr<std::string> description_;
 	std::vector<int> cost_;

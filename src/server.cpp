@@ -25,9 +25,12 @@ server::game_info::game_info() : game_state(new game)
 {}
 
 server::server(boost::asio::io_service& io_service)
-  : acceptor_(io_service, tcp::endpoint(tcp::v4(), 17000))
+  : acceptor_(io_service, tcp::endpoint(tcp::v4(), 17000)),
+    timer_(io_service)
 {
 	start_accept();
+
+	heartbeat();
 }
 
 void server::start_accept()
@@ -98,12 +101,35 @@ void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 	const std::string name = node.Value();
 
 	socket_info& info = connections_[socket];
-	if(name == "login") {
+	if(name == "close_ajax") {
+		client_info& cli_info = clients_[info.nick];
+
+		if(cli_info.msg_queue.empty() == false) {
+
+			for(std::map<socket_ptr,std::string>::iterator s = waiting_connections_.begin();
+			    s != waiting_connections_.end(); ++s) {
+				if(s->second == info.nick && s->first != socket) {
+					send_msg(s->first, "<heartbeat/>");
+					s->first->close();
+					disconnect(s->first);
+					break;
+				}
+			}
+
+			send_msg(socket, cli_info.msg_queue.front());
+			cli_info.msg_queue.pop_front();
+			disconnect(socket);
+			socket->close();
+		} else {
+			waiting_connections_[socket] = info.nick;
+		}
+
+	} else if(name == "login") {
 		info.nick = node.Attribute("name");
 	} else if(name == "create_game") {
 		game_info_ptr new_game(new game_info);
 		const game_context context(new_game->game_state.get());
-		new_game->clients.push_back(socket);
+		new_game->clients.push_back(info.nick);
 		new_game->game_state->add_player(info.nick);
 		const int nbots = xml_int(node, "bots");
 		for(int n = 0; n != nbots; ++n) {
@@ -114,6 +140,8 @@ void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 		
 		cli_info.game = new_game;
 		cli_info.nplayer = 0;
+
+		queue_msg(info.nick, "<game_created/>");
 	} else if(name == "join_game") {
 		std::cerr << "join_game...\n";
 		client_info& cli_info = clients_[info.nick];
@@ -121,7 +149,7 @@ void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 		    i != clients_.end(); ++i) {
 			if(i->second.game && i->second.game->game_state->started() == false) {
 				const game_context context(i->second.game->game_state.get());
-				i->second.game->clients.push_back(socket);
+				i->second.game->clients.push_back(info.nick);
 				i->second.game->game_state->add_player(info.nick);
 				cli_info.nplayer = i->second.game->clients.size() - 1;
 				cli_info.game = i->second.game;
@@ -130,7 +158,7 @@ void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 				join_game << node;
 				join_game.resize(join_game.size()+1);
 				join_game[join_game.size()-1] = 0;
-				send_msg(i->second.game->clients.front(), join_game);
+				queue_msg(i->second.game->clients.front(), join_game);
 				break;
 			}
 		}
@@ -149,19 +177,28 @@ void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 			std::vector<game::message> game_response;
 			cli_info.game->game_state->swap_outgoing_messages(game_response);
 			foreach(game::message& msg, game_response) {
-				msg.contents.push_back(0);
 				if(msg.recipients.empty()) {
-					foreach(const socket_ptr& sock, cli_info.game->clients) {
-						send_msg(sock, msg.contents);
+					foreach(const std::string& nick, cli_info.game->clients) {
+						queue_msg(nick, msg.contents);
 					}
 				} else {
 					foreach(int player, msg.recipients) {
 						ASSERT_LT(player, cli_info.game->clients.size());
-						send_msg(cli_info.game->clients[player], msg.contents);
+						queue_msg(cli_info.game->clients[player], msg.contents);
 					}
 				}
 			}
 		}
+	}
+}
+
+void server::queue_msg(const std::string& nick, const std::string& msg)
+{
+	std::map<std::string, client_info>::iterator itor = clients_.find(nick);
+	if(itor != clients_.end()) {
+		itor->second.msg_queue.push_back(msg);
+	} else {
+		std::cerr << "UNKNOWN USER: '" << nick << "'\n";
 	}
 }
 
@@ -181,5 +218,32 @@ void server::handle_send(socket_ptr socket, const boost::system::error_code& e, 
 
 void server::disconnect(socket_ptr socket)
 {
+	waiting_connections_.erase(socket);
 	connections_.erase(socket);
+}
+
+void server::heartbeat()
+{
+	std::cerr << "heartbeat\n";
+
+	for(std::map<socket_ptr, std::string>::iterator i = waiting_connections_.begin(); i != waiting_connections_.end(); ++i) {
+		socket_ptr socket = i->first;
+
+		socket_info& info = connections_[socket];
+		client_info& cli_info = clients_[info.nick];
+		if(cli_info.msg_queue.empty() == false) {
+			send_msg(socket, cli_info.msg_queue.front());
+			cli_info.msg_queue.pop_front();
+		} else {
+			send_msg(socket, "<heartbeat/>");
+		}
+
+		disconnect(socket);
+		socket->close();
+	}
+
+	waiting_connections_.clear();
+
+	timer_.expires_from_now(boost::posix_time::seconds(10));
+	timer_.async_wait(boost::bind(&server::heartbeat, this));
 }

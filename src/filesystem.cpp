@@ -290,7 +290,7 @@ namespace {
   const bool have_datadir = false;
 #endif
 
-  const mode_t AccessMode = 00770;
+  const mode_t AccessMode = 00777;
 }
 
 void get_files_in_dir(const std::string& directory,
@@ -538,6 +538,11 @@ void write_file(const std::string& fname, const std::string& data)
 {
 	std::ofstream file(fname.c_str(),std::ios_base::binary);
 	file << data;
+}
+
+void make_dir(const std::string& dirname)
+{
+	mkdir(dirname.c_str(),AccessMode);
 }
 
 }

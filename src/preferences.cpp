@@ -19,7 +19,7 @@ namespace preferences {
 
 		bool screen_rotated_ = true;
 		
-		const char *save_file_path_ = "../Documents/save.cfg";
+		const char *save_file_path_ = "../Documents/save.xml";
 #else
 		int virtual_screen_width_ = 1024;
 		int virtual_screen_height_ = 768;
@@ -29,7 +29,7 @@ namespace preferences {
 		
 		bool screen_rotated_ = false;
 		
-		const char *save_file_path_ = "data/level/save.cfg";
+		const char *save_file_path_ = "data/level/save.xml";
 #endif
 
 		bool load_compiled_ = false;

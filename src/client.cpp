@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 	}
 
 	std::string nick = "david";
-	std::string deck = "deck.cfg";
+	std::string deck = "deck.xml";
 
 	std::string utility_program;
 	std::vector<std::string> util_args;
@@ -74,11 +74,11 @@ int main(int argc, char** argv)
 	SDL_WM_SetCaption("Wizard", "Wizard");
 
 	graphics::texture::manager texture_manager;
-	terrain::init(wml::parse_wml_from_file("data/terrain.cfg"));
+	terrain::init(wml::parse_wml_from_file("data/terrain.xml"));
 	font::manager font_manager;
-	gui_section::init(wml::parse_wml_from_file("data/gui.cfg"));
-	framed_gui_element::init(wml::parse_wml_from_file("data/gui.cfg"));
-	movement_type::init(wml::parse_wml_from_file("data/move.cfg"));
+	gui_section::init(wml::parse_wml_from_file("data/gui.xml"));
+	framed_gui_element::init(wml::parse_wml_from_file("data/gui.xml"));
+	movement_type::init(wml::parse_wml_from_file("data/move.xml"));
 
 	glShadeModel(GL_SMOOTH);
 	glEnable(GL_BLEND);
@@ -92,12 +92,12 @@ int main(int argc, char** argv)
 	ASSERT_EQ(glew_status, GLEW_OK);
 #endif
 
-	network::manager network_manager;
-
 	if(utility_program.empty() == false) {
 		test::run_utility(utility_program, util_args);
 		return 0;
 	}
+
+	network::manager network_manager;
 
 	network::connect("localhost", "17000");
 

@@ -80,8 +80,11 @@ public:
 private:
 	variant get_value(const std::string& key) const;
 
-	void play_card(int nplayer, const TiXmlElement& msg, int speed=-1);
+	bool play_card(int nplayer, const TiXmlElement& msg, int speed=-1);
 	void resolve_card(int nplayer, const_card_ptr card, const TiXmlElement& msg);
+
+	void end_turn(int nplayer, bool skipping);
+
 	bool add_city(city_ptr new_city);
 	void setup_game();
 	bool started_;
@@ -121,5 +124,7 @@ public:
 	void set(game* g);
 	~game_context();
 };
+
+bool can_player_pay_cost(int side, const std::vector<int>& v);
 
 #endif

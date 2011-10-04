@@ -8,8 +8,8 @@
 
 int main()
 {
-	terrain::init(wml::parse_wml_from_file("data/terrain.cfg"));
-	movement_type::init(wml::parse_wml_from_file("data/move.cfg"));
+	terrain::init(wml::parse_wml_from_file("data/terrain.xml"));
+	movement_type::init(wml::parse_wml_from_file("data/move.xml"));
 
 	boost::asio::io_service io_service;
 	server s(io_service);

@@ -159,10 +159,29 @@ wml::node_ptr game::write() const
 		res->add_child(u->write());
 	}
 
+	int nplayer = 0;
 	foreach(const player& p, players_) {
 		wml::node_ptr player_node(new wml::node("player"));
 		player_node->set_attr("name", p.name);
-		player_node->set_attr("spells", write_deck(p.spells));
+
+		std::ostringstream stream;
+		foreach(const held_card& c, p.spells) {
+			bool usable = player_casting_ == nplayer && c.embargo == 0;
+			if(usable) {
+				std::vector<hex::location> targets, possible_targets;
+				const bool playable = c.card->is_card_playable(NULL, nplayer, targets, possible_targets);
+				usable = playable || !possible_targets.empty();
+			}
+			stream << c.card->id() << " " << c.embargo << " " << (usable ? "1" : "0") << ",";
+		}
+
+		std::string spells_str = stream.str();
+		if(spells_str.empty() == false) {
+			//cut off the last comma
+			spells_str.resize(spells_str.size()-1);
+		}
+
+		player_node->set_attr("spells", spells_str);
 
 		if(!p.resources.empty()) {
 			player_node->set_attr("resources", util::join_ints(&p.resources[0], p.resources.size()));
@@ -177,15 +196,50 @@ wml::node_ptr game::write() const
 		}
 
 		res->add_child(player_node);
+		++nplayer;
 	}
 
 	return res;
 }
 
+namespace {
+
+std::string write_steps(const hex::route& rt)
+{
+	std::ostringstream s;
+	bool first = true;
+	foreach(const hex::location& step, rt.steps) {
+		if(!first) {
+			s << ",";
+		}
+
+		first = false;
+		s << step.x() << "," << step.y();
+	}
+
+	return s.str();
+}
+
+void write_route_map(const hex::route_map& m, wml::node_ptr result) {
+	for(std::map<hex::location, hex::route>::const_iterator i = m.begin();
+	    i != m.end(); ++i) {
+		wml::node_ptr node = hex::write_location("route", i->first);
+
+		node->set_attr("steps", write_steps(i->second));
+
+		result->add_child(node);
+	}
+}
+}
+
 void game::handle_message(int nplayer, const TiXmlElement& msg)
 {
 	const std::string type = msg.Value();
-	if(type == "setup") {
+	if(type == "commands") {
+		for(const TiXmlElement* t = msg.FirstChildElement(); t != NULL; t = t->NextSiblingElement()) {
+			handle_message(nplayer, *t);
+		}
+	} else if(type == "setup") {
 		setup_game();
 		queue_message(wml::output_xml(write()));
 
@@ -206,20 +260,44 @@ void game::handle_message(int nplayer, const TiXmlElement& msg)
 
 		draw_hand(nplayer);
 		queue_message(wml::output_xml(write()));
+	} else if(type == "select_unit") {
+		const hex::location loc(parse_loc_from_xml(msg));
+		unit_ptr u = get_unit_at(loc);
+		if(u && u->side() == nplayer && player_casting_ == nplayer) {
+			if(u->has_moved() == false) {
+				hex::route_map routes;
+				hex::find_possible_moves(u->loc(), u->move(), unit_movement_cost_calculator(this, u), routes);
+
+				wml::node_ptr node(hex::write_location("select_unit_move", loc));
+				write_route_map(routes, node);
+				queue_message(wml::output_xml(node), nplayer);
+			}
+		}
+
 	} else if(type == "move") {
 		const TiXmlElement* from = msg.FirstChildElement("from");
 		const TiXmlElement* to = msg.FirstChildElement("to");
+		const TiXmlElement* query_abilities = msg.FirstChildElement("query_abilities");
 		ASSERT_LOG(from && to, "message format of move illegal");
 		const hex::location from_loc(parse_loc_from_xml(*from));
 		const hex::location to_loc(parse_loc_from_xml(*to));
 
+		unit_ptr u = get_unit_at(from_loc);
+		ASSERT_LOG(u.get(), "Could not find unit at from loc");
+
+		hex::route_map routes;
+		hex::find_possible_moves(u->loc(), u->move(), unit_movement_cost_calculator(this, u), routes);
+
+		if(routes.count(to_loc) == 0) {
+			return;
+		}
+
 		wml::node_ptr anim_node(new wml::node("move_anim"));
+		anim_node->set_attr("steps", write_steps(routes[to_loc]));
 		anim_node->add_child(hex::write_location("from", from_loc));
 		anim_node->add_child(hex::write_location("to", to_loc));
 		queue_message(wml::output_xml(anim_node));
 
-		unit_ptr u = get_unit_at(from_loc);
-		ASSERT_LOG(u.get(), "Could not find unit at from loc");
 		u->set_loc(to_loc);
 		u->set_moved();
 		capture_tower(to_loc, u);
@@ -240,125 +318,172 @@ void game::handle_message(int nplayer, const TiXmlElement& msg)
 		}
 		}
 
-		queue_message(wml::output_xml(write()));
+
+		std::vector<unit_ability_ptr> playable_abilities;
+		foreach(unit_ability_ptr ability, u->abilities()) {
+			card_ptr spell(card::get(ability->spell()));
+			if(!spell) {
+				continue;
+			}
+
+			std::vector<hex::location> targets, possible_targets;
+			const bool playable = spell->is_card_playable(u.get(), u->side(), targets, possible_targets) || possible_targets.empty() == false;
+			if(playable) {
+				playable_abilities.push_back(ability);
+			}
+		}
+
+		//if the attribute has hold_turn it means the client will just
+		//continue to send instructions. Otherwise it expects the server to
+		//take appropriate action.
+		if(!msg.Attribute("hold_turn")) {
+			if(playable_abilities.empty()) {
+				end_turn(u->side(), false);
+			} else {
+				queue_message(wml::output_xml(write()));
+	
+				if(query_abilities != NULL) {
+					std::ostringstream s;
+					s << "<choose_ability unit=\"" << u->key() << "\"  abilities=\"";
+					for(int n = 0; n != playable_abilities.size(); ++n) {
+						if(n != 0) {
+							s << ",";
+						}
+
+						s << playable_abilities[n]->id();
+					}
+
+					s << "\"/>";
+					queue_message(s.str(), u->side());
+				}
+			}
+		}
 
 	} else if(type == "play") {
-		play_card(nplayer, msg);
-		spell_casting_passes_ = 0;
-	} else if(type == "end_turn") {
-		const bool skipping = xml_str(msg, "skip") == "yes";
-		if(skipping) {
-			++spell_casting_passes_;
-		} else {
+		if(play_card(nplayer, msg)) {
 			spell_casting_passes_ = 0;
+			end_turn(nplayer, false);
 		}
+	} else if(type == "end_turn") {
+		end_turn(nplayer, xml_str(msg, "skip") == "yes");
+	}
+}
 
-		player_casting_ = player_casting_+1;
-		if(player_casting_ == players_.size()) {
-			player_casting_ = 0;
-		}
+void game::end_turn(int nplayer, bool skipping)
+{
+	if(skipping) {
+		++spell_casting_passes_;
+	} else {
+		spell_casting_passes_ = 0;
+	}
+
+	ASSERT_EQ(nplayer, player_casting_);
+
+	player_casting_ = player_casting_+1;
+	if(player_casting_ == players_.size()) {
+		player_casting_ = 0;
+	}
+
+	//make sure any units die that are meant to.
+	do_state_based_actions();
+
+	std::cerr << "SPELLS: " << spell_casting_passes_ << " / " << players_.size() << "\n";
+
+	if(spell_casting_passes_ >= players_.size()) {
+		spell_casting_passes_ = 0;
+
+		int last_delay = -1;
 
 		//make sure any units die that are meant to.
 		do_state_based_actions();
 
-		std::cerr << "SPELLS: " << spell_casting_passes_ << " / " << players_.size() << "\n";
+		ASSERT_INDEX_INTO_VECTOR(nplayer, players_);
 
-		if(spell_casting_passes_ >= players_.size()) {
-			spell_casting_passes_ = 0;
+		do_state_based_actions();
 
-			int last_delay = -1;
+		for(int n = 0; n != players_.size(); ++n) {
+			draw_hand(n);
 
-			//make sure any units die that are meant to.
-			do_state_based_actions();
-
-			ASSERT_INDEX_INTO_VECTOR(nplayer, players_);
-
-			do_state_based_actions();
-
-			for(int n = 0; n != players_.size(); ++n) {
-				draw_hand(n);
-
-				foreach(player& p, players_) {
-					foreach(held_card& spell, p.spells) {
-						if(spell.embargo > 0) {
-							--spell.embargo;
-						}
+			foreach(player& p, players_) {
+				foreach(held_card& spell, p.spells) {
+					if(spell.embargo > 0) {
+						--spell.embargo;
 					}
-				}
-
-				std::vector<int>& resources = players_[n].resources;
-				resources.resize(resource::num_resources());
-				players_[n].resource_gain.resize(resource::num_resources());
-
-				ASSERT_EQ(resources.size(), players_[n].resource_gain.size());
-
-				std::vector<int> upkeep(resources.size());
-				foreach(unit_ptr u, units_) {
-					if(u->side() != n) {
-						continue;
-					}
-
-					foreach(char c, u->upkeep()) {
-						upkeep[resource::resource_index(c)]++;
-					}
-				}
-
-				for(std::map<hex::location, char>::const_iterator i = players_[n].towers.begin(); i != players_[n].towers.end(); ++i) {
-					const int r = resource::resource_index(i->second);
-					if(upkeep[r] > 0) {
-						--upkeep[r];
-					}
-				}
-
-				for(int m = 0; m != resource::num_resources(); ++m) {
-					resources[m] += players_[n].resource_gain[m] - upkeep[m];
-					if(resources[m] < 0) {
-						resources[m] = 0;
-					}
-					std::cerr << "PLAYER " << n << " RESOURCE " << m << ": " << resources[m] << "\n";
 				}
 			}
 
-			++player_turn_;
-			if(player_turn_ == players_.size()) {
-				player_turn_ = 0;
-			}
+			std::vector<int>& resources = players_[n].resources;
+			resources.resize(resource::num_resources());
+			players_[n].resource_gain.resize(resource::num_resources());
 
-			player_casting_ = player_turn_;
+			ASSERT_EQ(resources.size(), players_[n].resource_gain.size());
 
+			std::vector<int> upkeep(resources.size());
 			foreach(unit_ptr u, units_) {
-				u->new_turn();
-			}
-
-			spell_casting_passes_ = 0;
-		}
-		
-		queue_message(wml::output_xml(write()));
-		queue_message(formatter() << "<new_turn player=\"" << players_[player_casting_].name << "\"></new_turn>\n");
-
-		foreach(boost::shared_ptr<ai_player> ai, ai_) {
-			std::vector<wml::node_ptr> nodes = ai->play();
-
-			while(nodes.empty() == false) {
-				foreach(wml::node_ptr node, nodes) {
-					std::string msg(wml::output_xml(node));
-					std::cerr << "AI MESSAGE: " << msg << "\n";
-
-					TiXmlDocument xml_doc;
-					xml_doc.Parse(msg.c_str());
-
-					TiXmlElement* doc = xml_doc.RootElement();
-
-					handle_message(ai->player_id(), *doc);
+				if(u->side() != n) {
+					continue;
 				}
 
-				nodes = ai->play();
+				foreach(char c, u->upkeep()) {
+					upkeep[resource::resource_index(c)]++;
+				}
 			}
+
+			for(std::map<hex::location, char>::const_iterator i = players_[n].towers.begin(); i != players_[n].towers.end(); ++i) {
+				const int r = resource::resource_index(i->second);
+				if(upkeep[r] > 0) {
+					--upkeep[r];
+				}
+			}
+
+			for(int m = 0; m != resource::num_resources(); ++m) {
+				resources[m] += players_[n].resource_gain[m] - upkeep[m];
+				if(resources[m] < 0) {
+					resources[m] = 0;
+				}
+				std::cerr << "PLAYER " << n << " RESOURCE " << m << ": " << resources[m] << "\n";
+			}
+		}
+
+		++player_turn_;
+		if(player_turn_ == players_.size()) {
+			player_turn_ = 0;
+		}
+
+		player_casting_ = player_turn_;
+
+		foreach(unit_ptr u, units_) {
+			u->new_turn();
+		}
+
+		spell_casting_passes_ = 0;
+	}
+	
+	queue_message(wml::output_xml(write()));
+	queue_message(formatter() << "<new_turn player=\"" << players_[player_casting_].name << "\"></new_turn>\n");
+
+	foreach(boost::shared_ptr<ai_player> ai, ai_) {
+		std::vector<wml::node_ptr> nodes = ai->play();
+
+		while(nodes.empty() == false) {
+			foreach(wml::node_ptr node, nodes) {
+				std::string msg(wml::output_xml(node));
+				std::cerr << "AI MESSAGE: " << msg << "\n";
+
+				TiXmlDocument xml_doc;
+				xml_doc.Parse(msg.c_str());
+
+				TiXmlElement* doc = xml_doc.RootElement();
+
+				handle_message(ai->player_id(), *doc);
+			}
+
+			nodes = ai->play();
 		}
 	}
 }
 
-void game::play_card(int nplayer, const TiXmlElement& msg, int speed)
+bool game::play_card(int nplayer, const TiXmlElement& msg, int speed)
 {
 	const std::string type = xml_str(msg, "spell");
 
@@ -368,16 +493,44 @@ void game::play_card(int nplayer, const TiXmlElement& msg, int speed)
 	ASSERT_INDEX_INTO_VECTOR(nplayer, players_);
 	player& p = players_[nplayer];
 
+	unit_ptr caster;
 	if(msg.Attribute("caster")) {
 		const int caster_key = xml_int(msg, "caster");
-		unit_ptr caster;
 		foreach(unit_ptr u, units_) {
 			if(u->key() == caster_key) {
 				caster = u;
 			}
 		}
 
-		ASSERT_LOG(caster.get() != NULL, "COULD NOT FIND SPELL CASTER: " << caster_key);
+		if(!caster) {
+			return false;
+		}
+	}
+
+	std::vector<hex::location> targets, possible_targets;
+	for(const TiXmlElement* target = msg.FirstChildElement("target"); target != NULL; target = target->NextSiblingElement("target")) {
+		hex::location loc(parse_loc_from_xml(*target));
+		targets.push_back(loc);
+	}
+
+	if(!card->is_card_playable(caster.get(), nplayer, targets, possible_targets)) {
+		std::ostringstream msg;
+		msg << "<illegal_cast legal_targets=\"";
+		for(int n = 0; n != possible_targets.size(); ++n) {
+			if(n != 0) {
+				msg << ",";
+			}
+
+			msg << possible_targets[n].x() << "," << possible_targets[n].y();
+		}
+
+		msg << "\"/>";
+
+		queue_message(msg.str(), nplayer);
+		return false;
+	}
+
+	if(caster) {
 		if(card->taps_caster()) {
 			caster->set_moved();
 		}
@@ -402,6 +555,7 @@ void game::play_card(int nplayer, const TiXmlElement& msg, int speed)
 	do_state_based_actions();
 
 	queue_message(wml::output_xml(write()));
+	return true;
 }
 
 namespace {
@@ -484,10 +638,17 @@ void game::resolve_card(int nplayer, const_card_ptr card, const TiXmlElement& ms
 
 	for(const TiXmlElement* target = msg.FirstChildElement("target"); target != NULL; target = target->NextSiblingElement("target")) {
 		hex::location loc(parse_loc_from_xml(*target));
-		unit_ptr u = get_unit_at(loc);
-		if(u.get() != NULL) {
-			if(card->modification()) {
-				u->add_modification(*card->modification());
+
+		if(card->monster_id()) {
+			units_.push_back(unit::build_from_prototype(*card->monster_id(), nplayer, loc));
+			units_.back()->set_moved();
+			units_.back()->handle_event("summoned");
+		} else {
+			unit_ptr u = get_unit_at(loc);
+			if(u.get() != NULL) {
+				if(card->modification()) {
+					u->add_modification(*card->modification());
+				}
 			}
 		}
 	}
@@ -876,4 +1037,20 @@ void game::execute_command(variant v, client_play_game* client)
 	if(cmd) {
 		cmd->execute(client);
 	}
+}
+
+bool can_player_pay_cost(int side, const std::vector<int>& v)
+{
+	if(side < 0 || side >= game::current()->players().size()) {
+		return false;
+	}
+
+	const std::vector<int>& resources = game::current()->players()[side].resources;;
+	for(int n = 0; n < resources.size() && n < v.size(); ++n) {
+		if(v[n] > resources[n]) {
+			return false;
+		}
+	}
+
+	return true;
 }

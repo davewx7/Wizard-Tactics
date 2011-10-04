@@ -62,7 +62,7 @@ const_unit_ptr unit::get_prototype(const std::string& id)
 	static std::map<std::string, const_unit_ptr> cache;
 	const_unit_ptr& u = cache[id];
 	if(!u.get()) {
-		u.reset(new unit(wml::parse_wml_from_file("data/units/" + id + ".cfg")));
+		u.reset(new unit(wml::parse_wml_from_file("data/units/" + id + ".xml")));
 	}
 
 	return u;
@@ -152,10 +152,7 @@ wml::node_ptr unit::write() const
 	node->set_attr("life", formatter() << life_);
 	node->set_attr("armor", formatter() << armor_);
 	node->set_attr("move", formatter() << move_);
-
-	if(damage_taken_) {
-		node->set_attr("damage_taken", formatter() << damage_taken_);
-	}
+	node->set_attr("damage_taken", formatter() << damage_taken_);
 
 	if(has_moved_) {
 		node->set_attr("has_moved", "yes");
@@ -245,7 +242,7 @@ void unit::new_turn()
 	std::vector<mod_ptr>::iterator i = mods_.begin();
 	while(i != mods_.end()) {
 		if((*i)->expires_end_of_turn) {
-			mods_.erase(i++);
+			i = mods_.erase(i);
 		} else {
 			++i;
 		}

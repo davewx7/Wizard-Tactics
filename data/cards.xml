@@ -15,15 +15,6 @@
 >
 	</spell>
 
-	<spell 	type="land"
-	name="Sprouting Foliage"
-	id="sprouting_foliage"
-	description="Convert a target land tile to forest"
-	land="forest"
-	valid_targets="filter(game.tiles, terrain != 'void' and tower(loc) = -1)"
->
-	</spell>
-
 	<spell 	id="elvish_archer"
 	type="monster"
 	name="Elvish Archer"

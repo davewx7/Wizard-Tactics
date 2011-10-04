@@ -23,7 +23,7 @@ std::string preprocess(const std::string& input){
 
 					i += IncludeString.size(); //skip past the directive - we've tested that it exists
 					
-					//test for an argument to @include - e.g. "filename.cfg".  First the open quote:
+					//test for an argument to @include - e.g. "filename.xml".  First the open quote:
 					std::string::const_iterator quote = std::find(i, input.end(), '"');
 					if(quote == input.end()) {
 						std::cerr << "we didn't find a opening quote. Syntax error." << std::endl;

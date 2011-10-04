@@ -16,6 +16,7 @@
 
 #include "asserts.hpp"
 #include "concurrent_cache.hpp"
+#include "filesystem.hpp"
 #include "foreach.hpp"
 #include "preferences.hpp"
 #include "raster.hpp"
@@ -684,3 +685,42 @@ BENCHMARK(texture_copy_ctor)
 	}
 }
 
+#include "IMG_savepng.h"
+
+namespace {
+void build_transparent_images_dir(const std::string& dir)
+{
+	using namespace graphics;
+
+	fprintf(stderr, "BUILD IMAGES FOR: %s\n", dir.c_str());
+
+	sys::make_dir("alpha-images/" + dir);
+
+	std::vector<std::string> files, subdirs;
+	sys::get_files_in_dir("images/" + dir, &files, &subdirs);
+
+	foreach(const std::string& sub, subdirs) {
+		build_transparent_images_dir(dir + "/" + sub);
+	}
+
+	foreach(const std::string& file, files) {
+		fprintf(stderr, "BUILD IMAGE: %s\n", (dir + "/" + file).c_str());
+		graphics::surface s = graphics::surface_cache::get_no_cache(dir + "/" + file);
+		if(s) {
+			surface dst(SDL_CreateRGBSurface(SDL_SWSURFACE,s->w,s->h,32,SURFACE_MASK));
+			SDL_SetAlpha(s.get(), 0, SDL_ALPHA_OPAQUE);
+			SDL_BlitSurface(s.get(),NULL,dst.get(),NULL);
+			set_alpha_for_transparent_colors_in_rgba_surface(dst.get());
+
+			const std::string out_fname = "alpha-images/" + dir + "/" + file;
+			fprintf(stderr, "OUTPUT IMAGE: %s\n", out_fname.c_str());
+			IMG_SavePNG(out_fname.c_str(), dst.get());
+		}
+	}
+}
+}
+
+UTILITY(build_transparent_images)
+{
+	build_transparent_images_dir("");
+}

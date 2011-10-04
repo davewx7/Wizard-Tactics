@@ -24,7 +24,7 @@ void init(wml::const_node_ptr node)
 const unit_animation* get(const std::string& key)
 {
 	if(cache.empty()) {
-		init(wml::parse_wml_from_file("data/unit_overlays.cfg"));
+		init(wml::parse_wml_from_file("data/unit_overlays.xml"));
 	}
 
 	return cache[key].get();

@@ -56,7 +56,7 @@ std::vector<wml::node_ptr> default_ai_player::play()
 	std::vector<wml::node_ptr> result;
 	if(!set_deck_) {
 		set_deck_ = true;
-		result.push_back(wml::parse_xml(sys::read_file("deck.cfg")));
+		result.push_back(wml::parse_xml(sys::read_file("deck.xml")));
 		return result;
 	}
 
@@ -65,6 +65,8 @@ std::vector<wml::node_ptr> default_ai_player::play()
 	if(get_game().player_casting() != player_id()) {
 		return result;
 	}
+
+	bool end_turn = false;
 
 	const game::player& player = get_game().players()[player_id()];
 	if(result.empty()) {
@@ -115,17 +117,22 @@ std::vector<wml::node_ptr> default_ai_player::play()
 						wml::node_ptr move_node(new wml::node("move"));
 						move_node->add_child(hex::write_location("from", move_from));
 						move_node->add_child(hex::write_location("to", move_to));
+						move_node->set_attr("hold_turn", "yes");
 						result.push_back(move_node);
 
 						u->set_loc(move_to);
+						end_turn = true;
 						foreach(unit_ability_ptr a, u->abilities()) {
 							wml::node_ptr attack_node = a->use_ability(*u, *this);
 							if(attack_node.get() != NULL) {
 								result.push_back(attack_node);
+								end_turn = false;
+								break;
 							}
 						}
 
 						u->set_loc(move_from);
+
 
 						break;
 					}
@@ -162,9 +169,8 @@ std::vector<wml::node_ptr> default_ai_player::play()
 				if(summoning_hex.valid()) {
 					wml::node_ptr play_node(new wml::node("play"));
 					play_node->set_attr("spell", card->id());
-					wml::node_ptr monster_node(hex::write_location("monster", summoning_hex));
-					monster_node->set_attr("type", *card->monster_id());
-					play_node->add_child(monster_node);
+					wml::node_ptr target_node(hex::write_location("target", summoning_hex));
+					play_node->add_child(target_node);
 
 					result.push_back(play_node);
 					break;
@@ -173,13 +179,17 @@ std::vector<wml::node_ptr> default_ai_player::play()
 		}
 	}
 
-	wml::node_ptr end_turn_node(new wml::node("end_turn"));
-	if(result.empty()) {
-		end_turn_node->set_attr("discard", "yes");
-		end_turn_node->set_attr("skip", "yes");
+	if(result.empty() || end_turn) {
+		wml::node_ptr end_turn_node(new wml::node("end_turn"));
+
+		if(result.empty()) {
+			end_turn_node->set_attr("skip", "yes");
+		}
+
+		result.push_back(end_turn_node);
 	}
 
-	result.push_back(end_turn_node);
+	std::cerr << "AI RESULTS: " << result.size() << "\n";
 	return result;
 }
 

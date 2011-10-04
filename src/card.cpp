@@ -28,7 +28,7 @@ const_card_ptr card::get(const std::string& id)
 {
 	static std::map<std::string, const_card_ptr> cache;
 	if(cache.empty()) {
-		wml::const_node_ptr cards_node = wml::parse_wml_from_file("data/cards.cfg");
+		wml::const_node_ptr cards_node = wml::parse_wml_from_file("data/cards.xml");
 		FOREACH_WML_CHILD(card_node, cards_node, "spell") {
 			const_card_ptr new_card(create(card_node));
 			ASSERT_LOG(cache.count(new_card->id()) == 0, "CARD REPEATED: " << new_card->id());
@@ -43,7 +43,7 @@ const_card_ptr card::get(const std::string& id)
 			std::string unit_id(id.begin(), dot);
 			std::string ability_id(dot+1, id.end());
 
-			wml::const_node_ptr unit_node = wml::parse_wml_from_file("data/units/" + unit_id + ".cfg");
+			wml::const_node_ptr unit_node = wml::parse_wml_from_file("data/units/" + unit_id + ".xml");
 			if(unit_node.get() != NULL) {
 				FOREACH_WML_CHILD(card_node, unit_node, "ability") {
 					const_card_ptr new_card(create(card_node));
@@ -94,7 +94,12 @@ wml::node_ptr card::use_card(card_selector& client) const
 	}
 
 	wml::node_ptr result = play_card(client);
+	return result;
+}
 
+wml::node_ptr card::use_card(unit* caster, int side, const std::vector<hex::location>& targets) const
+{
+	wml::node_ptr result = play_card(caster, side, targets);
 	return result;
 }
 
@@ -161,24 +166,15 @@ public:
 	{
 		return wml::node_ptr();
 	}
-};
 
-class land_card : public card {
-public:
-	explicit land_card(wml::const_node_ptr node);
-	virtual ~land_card() {}
-	virtual wml::node_ptr play_card(card_selector& client) const;
-	const std::string* land_id() const {
-		return (land_.empty() ? NULL : &land_.front());
+	virtual wml::node_ptr play_card(unit* caster, int side, const std::vector<hex::location>& targets) const {
+		return wml::node_ptr();
 	}
-private:
-	std::vector<std::string> land_;
-};
 
-land_card::land_card(wml::const_node_ptr node)
-  : card(node), land_(util::split(node->attr("land")))
-{
-}
+	virtual bool is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const {
+		return false;
+	}
+};
 
 namespace {
 bool is_void(const game* g, const hex::location loc) {
@@ -195,49 +191,6 @@ bool is_loc_in_sorted_vector(const hex::location& loc, const std::vector<hex::lo
 }
 }
 
-wml::node_ptr land_card::play_card(card_selector& client) const
-{
-	wml::node_ptr result(new wml::node("play"));
-	result->set_attr("spell", id());
-	std::vector<hex::location> locs;
-	std::map<hex::location, tile> backups;
-
-	std::vector<hex::location> targets;
-	const bool targets_valid = calculate_valid_targets(NULL, client.player_id(), targets);
-
-	boost::function<bool(const hex::location)> valid_target_fn;
-	if(targets_valid) {
-		valid_target_fn = boost::bind(is_loc_in_vector, _1, targets);
-	} else {
-		valid_target_fn = boost::bind(is_void, &client.get_game(), _1);
-	}
-
-	foreach(const std::string& land, land_) {
-		hex::location loc =
-		  client.player_select_loc("Select where to place your land.",
-		                           valid_target_fn);
-		if(loc.valid()) {
-			wml::node_ptr land_node(hex::write_location("land", loc));
-			land_node->set_attr("land", land);
-			result->add_child(land_node);
-			tile* t = client.get_game().get_tile(loc.x(), loc.y());
-			ASSERT_LOG(t != NULL, "Invalid location selected: " << loc);
-			backups[loc] = *t;
-			t->set_terrain(land);
-		} else {
-			for(std::map<hex::location, tile>::iterator i = backups.begin();
-			    i != backups.end(); ++i) {
-				tile* t = client.get_game().get_tile(i->first.x(), i->first.y());
-				ASSERT_LOG(t != NULL, "Invalid location selected: " << loc);
-				*t = i->second;
-			}
-			return wml::node_ptr();
-		}
-	}
-
-	return result;
-}
-
 namespace {
 bool true_loc(const hex::location& loc) { return true; }
 
@@ -248,6 +201,8 @@ public:
 	explicit attack_card(wml::const_node_ptr node);
 	virtual ~attack_card() {}
 	virtual wml::node_ptr play_card(card_selector& client) const;
+	virtual wml::node_ptr play_card(unit* caster, int side, const std::vector<hex::location>& targets) const;
+	virtual bool is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const;
 	virtual void resolve_card(const resolve_card_info* callable=NULL) const;
 	virtual bool calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const;
 	int damage() const { return damage_; }
@@ -278,6 +233,28 @@ wml::node_ptr attack_card::play_card(card_selector& client) const
 	result->add_child(hex::write_location("target", loc));
 
 	return result;
+}
+
+wml::node_ptr attack_card::play_card(unit* caster, int side, const std::vector<hex::location>& targets) const
+{
+	return wml::node_ptr();
+}
+
+bool attack_card::is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const
+{
+	if(caster == NULL || targets.size() > 1) {
+		return false;
+	}
+
+	std::vector<hex::location> valid_targets;
+	calculate_valid_targets(caster, side, valid_targets);
+
+	if(targets.size() == 1) {
+		return std::count(valid_targets.begin(), valid_targets.end(), targets.front()) != 0;
+	}
+
+	possible_targets = valid_targets;
+	return false;
 }
 
 namespace {
@@ -399,7 +376,10 @@ public:
 	explicit modification_card(wml::const_node_ptr node);
 	virtual ~modification_card() {}
 	virtual wml::node_ptr play_card(card_selector& client) const;
+	virtual wml::node_ptr play_card(unit* caster, int side, const std::vector<hex::location>& targets) const;
+	virtual bool is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const;
 	const unit::modification* modification() const { return &mod_; }
+	bool calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const;
 private:
 	int damage_;
 	int ntargets_;
@@ -415,6 +395,29 @@ modification_card::modification_card(wml::const_node_ptr node)
 	range_(wml::get_int(node, "range", -1)),
 	mod_(node)
 {
+}
+
+bool modification_card::calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& valid_targets) const
+{
+	if(range_ > 0) {
+		foreach(const_unit_ptr u, game::current()->units()) {
+			if(u->side() == side) {
+				bool can_cast = true;
+				for(int n = 0; n != resource::num_resources(); ++n) {
+					if(cost(n) && !u->can_cast(resource::resource_id(n))) {
+						can_cast = false;
+						break;
+					}
+				}
+
+				if(can_cast) {
+					hex::get_tiles_in_radius(u->loc(), range_, valid_targets);
+				}
+			}
+		}
+	}
+
+	return true;
 }
 
 wml::node_ptr modification_card::play_card(card_selector& client) const
@@ -464,11 +467,49 @@ wml::node_ptr modification_card::play_card(card_selector& client) const
 	return result;
 }
 
+wml::node_ptr modification_card::play_card(unit* caster, int side, const std::vector<hex::location>& targets) const
+{
+	wml::node_ptr result(new wml::node("play"));
+	result->set_attr("spell", id());
+	
+	foreach(const hex::location& target, targets) {
+		result->add_child(hex::write_location("target", target));
+	}
+
+	return result;
+}
+
+bool modification_card::is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const
+{
+	std::vector<hex::location> valid_targets;
+	calculate_valid_targets(caster, side, valid_targets);
+
+	foreach(const hex::location& target, targets) {
+		if(!std::count(valid_targets.begin(), valid_targets.end(), target)) {
+			return false;
+		}
+	}
+
+	if(targets.size() == ntargets_) {
+		return true;
+	}
+
+	if(targets.size() > ntargets_) {
+		return false;
+	}
+
+	possible_targets = valid_targets;
+	return true;
+}
+
 class monster_card : public card {
 public:
 	explicit monster_card(wml::const_node_ptr node);
 	virtual ~monster_card() {}
 	virtual wml::node_ptr play_card(card_selector& client) const;
+	virtual wml::node_ptr play_card(unit* caster, int side, const std::vector<hex::location>& targets) const;
+	bool calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const;
+	virtual bool is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const;
 	const std::string* monster_id() const { return &monster_; }
 private:
 	std::string monster_;
@@ -508,14 +549,63 @@ wml::node_ptr monster_card::play_card(card_selector& client) const
 	return result;
 }
 
+wml::node_ptr monster_card::play_card(unit* caster, int side, const std::vector<hex::location>& targets) const
+{
+	if(targets.size() != 1) {
+		return wml::node_ptr();
+	}
+
+	wml::node_ptr result(new wml::node("play"));
+	result->set_attr("spell", id());
+	wml::node_ptr monster_node(hex::write_location("monster", targets.front()));
+	monster_node->set_attr("type", monster_);
+	result->add_child(monster_node);
+	return result;
+}
+
+bool monster_card::is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const
+{
+	std::vector<hex::location> valid_targets;
+	const bool targets_valid = calculate_valid_targets(NULL, side, valid_targets);
+	if(!targets_valid) {
+		return false;
+	}
+
+	if(targets.empty()) {
+		possible_targets = valid_targets;
+		return false;
+	} else if(targets.size() == 1) {
+		return std::count(valid_targets.begin(), valid_targets.end(), targets.front()) != 0;
+	} else {
+		return false;
+	}
+}
+
+bool monster_card::calculate_valid_targets(const unit* caster, int side, std::vector<hex::location>& result) const
+{
+	if(card::calculate_valid_targets(caster, side, result)) {
+		return true;
+	}
+
+	const_unit_ptr proto = unit::get_prototype(monster_);
+	for(int x = 0; x != game::current()->width(); ++x) {
+		for(int y = 0; y != game::current()->height(); ++y) {
+			hex::location loc(x, y);
+			if(is_valid_summoning_hex(game::current(), side, loc, proto)) {
+				result.push_back(loc);
+			}
+		}
+	}
+
+	return true;
+}
+
 }
 
 const_card_ptr card::create(wml::const_node_ptr node)
 {
 	const std::string& type = node->attr("type");
-	if(type == "land") {
-		return const_card_ptr(new land_card(node));
-	} else if(type == "monster") {
+	if(type == "monster") {
 		return const_card_ptr(new monster_card(node));
 	} else if(type == "modification") {
 		return const_card_ptr(new modification_card(node));
@@ -536,7 +626,7 @@ std::vector<held_card> read_deck(const std::string& str)
 		std::vector<std::string> v = util::split(item, ' ');
 		ASSERT_LOG(v.size() == 1 || v.size() == 2, "ILLEGAL DECK FORMAT: " << str);
 		int embargo = 0;
-		if(v.size() == 2) {
+		if(v.size() > 1) {
 			embargo = atoi(v[1].c_str());
 		}
 

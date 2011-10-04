@@ -16,7 +16,6 @@ int unit_movement_cost_calculator::movement_cost(const hex::location& a, const h
 	}
 
 	const int res = unit_->move_type().movement_cost(t->terrain()->id());
-	std::cerr << "MOVE COST " << t->terrain()->id() << ": " << res << "\n";
 	return res;
 }
 
