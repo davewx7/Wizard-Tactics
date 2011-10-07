@@ -31,15 +31,6 @@
 
 int main(int argc, char** argv)
 {
-	if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK) < 0) {
-		std::cerr << "could not init SDL\n";
-		return -1;
-	}
-
-	if (SDL_SetVideoMode(preferences::actual_screen_width(),preferences::actual_screen_height(),0,SDL_OPENGL|(preferences::fullscreen() ? SDL_FULLSCREEN : 0)) == NULL) {
-		std::cerr << "could not set video mode\n";
-		return -1;
-	}
 
 	std::string nick = "david";
 	std::string deck = "deck.xml";
@@ -71,9 +62,25 @@ int main(int argc, char** argv)
 		}
 	}
 
+	graphics::texture::manager texture_manager;
+
+	if(utility_program.empty() == false) {
+		test::run_utility(utility_program, util_args);
+		return 0;
+	}
+
+	if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK) < 0) {
+		std::cerr << "could not init SDL\n";
+		return -1;
+	}
+
+	if (SDL_SetVideoMode(preferences::actual_screen_width(),preferences::actual_screen_height(),0,SDL_OPENGL|(preferences::fullscreen() ? SDL_FULLSCREEN : 0)) == NULL) {
+		std::cerr << "could not set video mode\n";
+		return -1;
+	}
+
 	SDL_WM_SetCaption("Wizard", "Wizard");
 
-	graphics::texture::manager texture_manager;
 	terrain::init(wml::parse_wml_from_file("data/terrain.xml"));
 	font::manager font_manager;
 	gui_section::init(wml::parse_wml_from_file("data/gui.xml"));
@@ -91,11 +98,6 @@ int main(int argc, char** argv)
 	GLenum glew_status = glewInit();
 	ASSERT_EQ(glew_status, GLEW_OK);
 #endif
-
-	if(utility_program.empty() == false) {
-		test::run_utility(utility_program, util_args);
-		return 0;
-	}
 
 	network::manager network_manager;
 

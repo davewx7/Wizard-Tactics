@@ -177,8 +177,6 @@ function build_draw_map_info() {
 			draw_map_info_nobg.push(draw_info);
 		}
 	}
-
-	console.log('build draw map info: ' + draw_map_info.length);
 }
 
 function draw_game() {
@@ -348,8 +346,6 @@ function create_ability_table(unit) {
 	var abilities_table = document.createElement('table');
 
 	for(var n = 0; n != unit.abilities.length; ++n) {
-		console.log('add ability: ' + unit.abilities[n].id);
-
 		var row = document.createElement('tr');
 		var cell = document.createElement('td');
 
@@ -496,7 +492,6 @@ function draw_ability(canvas, ability) {
 
 	var context = canvas.getContext('2d');
 
-	console.log('draw ability ' + ability.id);
 	context.drawImage(img, 0, 0);
 
 	context.font = "14px sans-serif";
@@ -521,8 +516,6 @@ function draw_spell(spell) {
 	if(!img) {
 		return;
 	}
-
-	console.log('draw spell ' + spell.id);
 
 	var context = spell.canvas.getContext('2d');
 
@@ -1002,12 +995,15 @@ function process_response(response) {
 		ability_using = null;
 		unit_casting = null;
 		game = new Game(element);
+				console.log('created game...');
 
 		if(player_side >= 0 && player_side < game.players.length) {
+				console.log('player...');
 			var player = game.players[player_side];
 			draw_player(document.getElementById('player_info').getContext('2d'), player);
 
 			if(player.spells) {
+				console.log('creating spells table');
 				var spells_para = document.getElementById('spells_para');
 				var spells_table = document.createElement('table');
 
@@ -1178,6 +1174,7 @@ function send_xml(xml_data) {
   var payload = user_id + '\n' + xml_data;
   var request =  new XMLHttpRequest();
   var url = ajax_script;
+
   request.open("POST", url, true);
   request.setRequestHeader("Content-Type",
                            "application/x-www-form-urlencoded");
@@ -1219,8 +1216,6 @@ function mouse_down(e) {
 	var xpos = e.pageX - canvas.offsetLeft;
 	var ypos = e.pageY - canvas.offsetTop;
 	var loc = pixel_pos_to_loc(xpos, ypos);
-
-	console.log('mouse down: ' + loc.x + ', ' + loc.y);
 
 	if(game == null) {
 		return;

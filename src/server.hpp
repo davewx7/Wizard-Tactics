@@ -20,6 +20,8 @@ public:
 	explicit server(boost::asio::io_service& io_service);
 	 
 	void run();
+
+	void adopt_ajax_socket(socket_ptr socket, const std::string& nick, const std::vector<char>& msg);
 private:
 	void start_accept();
 	void handle_accept(socket_ptr socket, const boost::system::error_code& error);
@@ -28,6 +30,8 @@ private:
 	void handle_incoming_data(socket_ptr socket, const char* i1, const char* i2);
 	void handle_message(socket_ptr socket, const std::vector<char>& msg);
 	void handle_message(socket_ptr socket, const TiXmlElement& msg);
+
+	void close_ajax(socket_ptr socket);
 
 	void send_msg(socket_ptr socket, const std::string& msg);
 	void handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes);
@@ -49,8 +53,10 @@ private:
 	typedef boost::shared_ptr<game_info> game_info_ptr;
 
 	struct socket_info {
+		socket_info() : ajax_connection(false) {}
 		std::vector<char> partial_message;
 		std::string nick;
+		bool ajax_connection;
 	};
 
 	struct client_info {

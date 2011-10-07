@@ -4,6 +4,7 @@
 #include "movement_type.hpp"
 #include "server.hpp"
 #include "terrain.hpp"
+#include "web_server.hpp"
 #include "wml_parser.hpp"
 
 int main()
@@ -13,5 +14,6 @@ int main()
 
 	boost::asio::io_service io_service;
 	server s(io_service);
+	web_server ws(io_service, s);
 	io_service.run();
 }

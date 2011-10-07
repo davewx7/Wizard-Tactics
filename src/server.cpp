@@ -100,30 +100,11 @@ void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 {
 	const std::string name = node.Value();
 
+	std::cerr << "handle_message(" << name << ")\n";
+
 	socket_info& info = connections_[socket];
 	if(name == "close_ajax") {
-		client_info& cli_info = clients_[info.nick];
-
-		if(cli_info.msg_queue.empty() == false) {
-
-			for(std::map<socket_ptr,std::string>::iterator s = waiting_connections_.begin();
-			    s != waiting_connections_.end(); ++s) {
-				if(s->second == info.nick && s->first != socket) {
-					send_msg(s->first, "<heartbeat/>");
-					s->first->close();
-					disconnect(s->first);
-					break;
-				}
-			}
-
-			send_msg(socket, cli_info.msg_queue.front());
-			cli_info.msg_queue.pop_front();
-			disconnect(socket);
-			socket->close();
-		} else {
-			waiting_connections_[socket] = info.nick;
-		}
-
+		close_ajax(socket);
 	} else if(name == "login") {
 		info.nick = node.Attribute("name");
 	} else if(name == "create_game") {
@@ -190,6 +171,37 @@ void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 			}
 		}
 	}
+
+	if(info.ajax_connection) {
+		close_ajax(socket);
+	}
+}
+
+void server::close_ajax(socket_ptr socket)
+{
+	socket_info& info = connections_[socket];
+
+	client_info& cli_info = clients_[info.nick];
+
+	if(cli_info.msg_queue.empty() == false) {
+
+		for(std::map<socket_ptr,std::string>::iterator s = waiting_connections_.begin();
+		    s != waiting_connections_.end(); ++s) {
+			if(s->second == info.nick && s->first != socket) {
+				send_msg(s->first, "<heartbeat/>");
+				s->first->close();
+				disconnect(s->first);
+				break;
+			}
+		}
+
+		send_msg(socket, cli_info.msg_queue.front());
+		cli_info.msg_queue.pop_front();
+		disconnect(socket);
+		socket->close();
+	} else {
+		waiting_connections_[socket] = info.nick;
+	}
 }
 
 void server::queue_msg(const std::string& nick, const std::string& msg)
@@ -204,9 +216,16 @@ void server::queue_msg(const std::string& nick, const std::string& msg)
 
 void server::send_msg(socket_ptr socket, const std::string& msg)
 {
-	boost::asio::async_write(*socket, boost::asio::buffer(msg),
+	const socket_info& info = connections_[socket];
+	std::string header;
+	if(info.ajax_connection) {
+		char buf[4096];
+		sprintf(buf, "HTTP/1.1 200 OK\nDate: Tue, 20 Sep 2011 21:00:00 GMT\nConnection: close\nServer: Wizard/1.0\nAccept-Ranges: bytes\nContent-Type: text/xml\nContent-Length: %d\nLast-Modified: Tue, 20 Sep 2011 10:00:00 GMT\n\n", msg.size());
+		header = buf;
+	}
+	boost::asio::async_write(*socket, boost::asio::buffer(header.empty() ? msg : (header + msg)),
 			                         boost::bind(&server::handle_send, this, socket, _1, _2));
-	std::cerr << "SEND MSG: " << msg.c_str() << "\n";
+	std::cerr << "SEND MSG: " << (header + msg) << "\n";
 }
 
 void server::handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes)
@@ -246,4 +265,13 @@ void server::heartbeat()
 
 	timer_.expires_from_now(boost::posix_time::seconds(10));
 	timer_.async_wait(boost::bind(&server::heartbeat, this));
+}
+
+void server::adopt_ajax_socket(socket_ptr socket, const std::string& nick, const std::vector<char>& msg)
+{
+	socket_info& info = connections_[socket];
+	info.ajax_connection = true;
+	info.nick = nick;
+	
+	handle_message(socket, msg);
 }
