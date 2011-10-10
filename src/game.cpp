@@ -803,7 +803,7 @@ void game::setup_game()
 	}
 
 	units_.push_back(unit::build_from_prototype("wizard", 0, hex::location(2, 8)));
-	units_.push_back(unit::build_from_prototype("wizard", 1, hex::location(4, 8)));
+	units_.push_back(unit::build_from_prototype("diamond_sorceress", 1, hex::location(11, 8)));
 
 	if(players_.size() > 0) {
 		players_[0].castle = hex::location(1, 14);
