@@ -906,8 +906,6 @@ function Player(element) {
 }
 
 function Game(element) {
-	console.time('Parse game');
-
 	this.height = parseInt(element.getAttribute('height'));
 	this.width = parseInt(element.getAttribute('width'));
 	this.tiles = element.getAttribute('tiles').split(',');
@@ -974,8 +972,6 @@ function Game(element) {
 			draw_map_info[index].avatar = avatar;
 		}
 	}
-
-	console.timeEnd('Parse game');
 }
 
 function process_response(response) {
@@ -986,8 +982,6 @@ function process_response(response) {
 
 	var element = response.documentElement;
 
-	console.time('process_response(' + element.tagName + ')');
-
 	if(element.tagName == 'game') {
 		spell_casting = null;
 		spell_targets = null;
@@ -995,15 +989,12 @@ function process_response(response) {
 		ability_using = null;
 		unit_casting = null;
 		game = new Game(element);
-				console.log('created game...');
 
 		if(player_side >= 0 && player_side < game.players.length) {
-				console.log('player...');
 			var player = game.players[player_side];
 			draw_player(document.getElementById('player_info').getContext('2d'), player);
 
 			if(player.spells) {
-				console.log('creating spells table');
 				var spells_para = document.getElementById('spells_para');
 				var spells_table = document.createElement('table');
 
