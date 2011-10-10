@@ -499,7 +499,7 @@ bool modification_card::is_card_playable(unit* caster, int side, const std::vect
 	}
 
 	possible_targets = valid_targets;
-	return true;
+	return false;
 }
 
 class monster_card : public card {

@@ -513,7 +513,10 @@ bool game::play_card(int nplayer, const TiXmlElement& msg, int speed)
 		targets.push_back(loc);
 	}
 
+	std::cerr << "CHECKING CARD PLAYABILITY...\n";
+
 	if(!card->is_card_playable(caster.get(), nplayer, targets, possible_targets)) {
+		std::cerr << "NOT PLAYABLE..\n";
 		std::ostringstream msg;
 		msg << "<illegal_cast legal_targets=\"";
 		for(int n = 0; n != possible_targets.size(); ++n) {
@@ -529,6 +532,8 @@ bool game::play_card(int nplayer, const TiXmlElement& msg, int speed)
 		queue_message(msg.str(), nplayer);
 		return false;
 	}
+
+	std::cerr << "PLAYABLE..\n";
 
 	if(caster) {
 		if(card->taps_caster()) {
