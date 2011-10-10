@@ -1041,7 +1041,7 @@ function process_response(response) {
 			}
 		}
 	} else if(element.tagName == 'game_created') {
-		send_xml('<commands><setup/><spells resource_gain="0,10,0,0,0,0" spells="dire_wolf,orcish_grunt"/></commands>');
+		send_xml('<commands><setup/><spells resource_gain="0,10,0,0,0,0" spells="dark_adept,skeleton,vampire,terror,flesh_wound,lightning,fireball"/></commands>');
 	} else if(element.tagName == 'select_unit_move') {
 		set_unit_move_info(new UnitMoveInfo(element));
 	} else if(element.tagName == 'choose_ability') {
