@@ -435,9 +435,16 @@ function clear_choose_ability_info() {
 			choose_ability_info.unit.abilities[n].usable = false;
 			choose_ability_info.unit.abilities[n].canvas = null;
 		}
+
+		choose_ability_info = null;
 	}
 
-	choose_ability_info = null;
+	if(current_abilities_table) {
+		console.log('clear abilities table');
+		var unit_td = document.getElementById('unit_td');
+		unit_td.removeChild(current_abilities_table);
+		current_abilities_table = null;
+	}
 }
 
 function UnitAnimation(element) {
@@ -988,6 +995,8 @@ function process_response(response) {
 		legal_targets = null;
 		ability_using = null;
 		unit_casting = null;
+		clear_choose_ability_info();
+
 		game = new Game(element);
 
 		if(player_side >= 0 && player_side < game.players.length) {
@@ -1081,6 +1090,8 @@ function process_response(response) {
 		}
 
 	} else if(element.tagName == 'attack_anim') {
+		clear_choose_ability_info();
+
 		var from_elements = element.getElementsByTagName('from');
 		var to_elements = element.getElementsByTagName('to');
 
