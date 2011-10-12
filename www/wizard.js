@@ -151,6 +151,25 @@ function build_draw_map_info() {
 
 		var area = terrain.image_area[prandom(loc)%terrain.image_area.length];
 
+		var is_tower = game.tiles[n] == 'tower';
+		var tower_area = null;
+		if(is_tower) {
+			//calculate tower_area -- the area within towers.png
+			//that we draw the tower surface from.
+			tower_area = [1, 2, 38, 40];
+			var tower_info = game.tower_info[n];
+			if(tower_info) {
+				switch(tower_info.resource) {
+				case 0: tower_area = [115, 2, 38, 40]; break;
+				case 1: tower_area = [191, 2, 38, 40]; break;
+				case 2: tower_area = [153, 2, 38, 40]; break;
+				case 3: tower_area = [115, 46, 38, 40]; break;
+				case 4: tower_area = [153, 46, 38, 40]; break;
+				case 5: tower_area = [191, 46, 38, 40]; break;
+				}
+			}
+		}
+
 		var draw_info = {
 			xpos: tile_pixel_x(loc),
 			ypos: tile_pixel_y(loc) + HexHeight - area.h*2,
@@ -160,7 +179,8 @@ function build_draw_map_info() {
 			loc: loc,
 			background: terrain.background,
 			highlight: false,
-			is_tower: game.tiles[n] == 'tower',
+			is_tower: is_tower,
+			tower_area: tower_area,
 			avatar: null,
 		};
 
@@ -259,7 +279,7 @@ function draw_game() {
 		}
 
 		if(info.is_tower) {
-			var area = [1, 2, 38, 40];
+			var area = info.tower_area;
 			canvas.drawImage(towers_image, area[0], area[1], area[2], area[3], info.xpos - 6, info.ypos - 56, area[2]*2, area[3]*2);
 		}
 	}
@@ -440,7 +460,6 @@ function clear_choose_ability_info() {
 	}
 
 	if(current_abilities_table) {
-		console.log('clear abilities table');
 		var unit_td = document.getElementById('unit_td');
 		unit_td.removeChild(current_abilities_table);
 		current_abilities_table = null;
@@ -927,11 +946,27 @@ function Game(element) {
 
 	this.players = [];
 
+	this.tower_info = {};
+
 	var player_elements = element.getElementsByTagName('player');
 	for(var n = 0; n != player_elements.length; ++n) {
 		var player = new Player(player_elements[n]);
 		if(player.name == user_id) {
 			player_side = n;
+		}
+
+		var tower_elements = player_elements[n].getElementsByTagName('tower');
+		for(var m = 0; m != tower_elements.length; ++m) {
+			var tower_element = tower_elements[m];
+
+			var info = {
+				x: parseInt(tower_element.getAttribute('x')),
+				y: parseInt(tower_element.getAttribute('y')),
+				resource: ResourceIndex[tower_element.getAttribute('resource')],
+				owner: n,
+			};
+
+			this.tower_info[info.y*this.width + info.x] = info;
 		}
 
 		this.players.push(player);
@@ -998,6 +1033,7 @@ function process_response(response) {
 		clear_choose_ability_info();
 
 		game = new Game(element);
+		draw_map_info = []; //clear draw map info so it's rebuilt.
 
 		if(player_side >= 0 && player_side < game.players.length) {
 			var player = game.players[player_side];
