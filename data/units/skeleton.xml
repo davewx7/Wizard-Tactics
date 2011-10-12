@@ -13,8 +13,8 @@ move="3"
 	targets="1"
 	valid_targets="game.tiles"
 	type="attack"
-	range=1
-	damage=1
+	range="1"
+	damage="1"
 >
 	</ability>
 
