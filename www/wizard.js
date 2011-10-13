@@ -41,6 +41,7 @@ var terrain_index = {};
 var gui_sections_index = {};
 
 var unit_animations = {};
+var unit_prototypes = {};
 
 var unit_avatars = {};
 
@@ -56,6 +57,10 @@ var frame_number = 0;
 var spells_index = {};
 var current_spells_table = null;
 var current_abilities_table = null;
+
+//an object representing what info we are currently displaying
+//in the info label.
+var current_info_displayed = null;
 
 //number of frames we delay processing messages to allow
 //animations to play.
@@ -382,6 +387,17 @@ function create_ability_table(unit) {
 			caster: unit,
 		};
 
+		canvas.onmousemove = function(event) {
+			if(current_info_displayed == this) {
+				return;
+			}
+
+			current_info_displayed = this;
+
+			var info_label = document.getElementById('info_label');
+			info_label.innerHTML = this.ability.description;
+		}.bind(obj);
+
 		canvas.onmousedown = function(event) {
 			spell_casting = null;
 			unit_casting = this.caster;
@@ -490,6 +506,10 @@ function draw_player(canvas, player) {
 		return;
 	}
 
+	var context = canvas.getContext('2d');
+
+	context.fillRect(0, 0, canvas.width, canvas.height);
+
 	var xpos = 5, ypos = 5;
 
 	for(var n = 0; n != player.resources.length; ++n) {
@@ -501,7 +521,7 @@ function draw_player(canvas, player) {
 					if(m != 0 && m%5 == 0) {
 						ypos += 20;
 					}
-					draw_gui_section(gui_section, canvas, xpos + (m%5)*10, ypos);
+					draw_gui_section(gui_section, context, xpos + (m%5)*10, ypos);
 				}
 
 				ypos += 20;
@@ -664,13 +684,15 @@ function download_xml_file(url, onget) {
 	request.send(null);
 }
 
-function load_unit_animation(unit_id) {
+function load_unit_prototype(unit_id) {
 	download_xml_file(data_url + 'wizard-data/units/' + unit_id + '.xml',
 	                  function(element) {
 		var stand_elements = element.getElementsByTagName('stand');
 		for(var n = 0; n != stand_elements.length; ++n) {
 		  unit_animations[unit_id] = new UnitAnimation(stand_elements[n]);
 		}
+
+		unit_prototypes[unit_id] = new Unit(element);
 	});
 }
 
@@ -680,6 +702,7 @@ function UnitAbility(element) {
 	this.taps_caster = element.getAttribute('taps_caster') == 'yes';
 	this.usable = false;
 	this.icon = 'abilities/' + element.getAttribute('icon');
+	this.description = element.getAttribute('description');
 	load_cached_image(this.icon);
 }
 
@@ -687,7 +710,7 @@ function Unit(element) {
 	this.id = element.getAttribute('id');
 
 	if(!unit_animations[this.id]) {
-		load_unit_animation(this.id);
+		load_unit_prototype(this.id);
 	}
 
 	this.x = parseInt(element.getAttribute('x'));
@@ -695,10 +718,12 @@ function Unit(element) {
 
 	this.side = parseInt(element.getAttribute('side'));
 
+	this.name = element.getAttribute('name');
 	this.key = parseInt(element.getAttribute('key'));
 	this.life = parseInt(element.getAttribute('life'));
 	this.damage_taken = parseInt(element.getAttribute('damage_taken'));
 	this.armor = parseInt(element.getAttribute('armor'));
+	this.move = parseInt(element.getAttribute('move'));
 	this.has_moved = element.getAttribute('has_moved') == 'yes';
 	this.abilities = [];
 
@@ -706,6 +731,32 @@ function Unit(element) {
 	for(var n = 0; n != ability_elements.length; ++n) {
 		this.abilities.push(new UnitAbility(ability_elements[n]));
 	}
+}
+
+function describe_unit(unit) {
+	var desc = '';
+	desc += '<p><h3>' + unit.name + '</h3></p><p>Life: ' + unit.life;
+	if(unit.damage_taken > 0) {
+		desc += '<font color="red"> (' + unit.damage_taken + ')</font>';
+	}
+
+	desc += '<br>Move: ' + unit.move;
+	if(unit.defense) {
+		desc += '<br>Defense: ' + unit.defense;
+	}
+
+	if(unit.abilities.length > 0) {
+		desc += '<ul>';
+		for(var n = 0; n != unit.abilities.length; ++n) {
+			var ability = unit.abilities[n];
+			desc += ability.name + ': ' + ability.description;
+		}
+		desc += '</ul>';
+	}
+
+	desc += '</p>';
+
+	return desc;
 }
 
 function Terrain(element) {
@@ -1037,7 +1088,7 @@ function process_response(response) {
 
 		if(player_side >= 0 && player_side < game.players.length) {
 			var player = game.players[player_side];
-			draw_player(document.getElementById('player_info').getContext('2d'), player);
+			draw_player(document.getElementById('player_info'), player);
 
 			if(player.spells) {
 				var spells_para = document.getElementById('spells_para');
@@ -1055,6 +1106,23 @@ function process_response(response) {
 					canvas.onmousedown = function(event) {
 						spell_casting = this.spell;
 						send_xml('<play spell="' + this.spell.id + '"/>');
+					}.bind(spell);
+
+					canvas.onmousemove = function(event) {
+						if(current_info_displayed == this) {
+							return;
+						}
+
+						current_info_displayed = this;
+
+						var spell = spells_index[this.spell.id];
+						var info_label = document.getElementById('info_label');
+						info_label.innerHTML = spell.description;
+
+						if(spell.monster && unit_prototypes[spell.monster]) {
+							info_label.innerHTML += describe_unit(unit_prototypes[spell.monster]);
+						}
+						
 					}.bind(spell);
 
 					spell.canvas = canvas;
@@ -1242,11 +1310,30 @@ function mouse_move(e) {
 	var canvas = get_board_canvas();
 	var xpos = e.pageX - canvas.offsetLeft;
 	var ypos = e.pageY - canvas.offsetTop;
-	mouseover_loc = pixel_pos_to_loc(xpos, ypos);
 
+	if(mouseover_loc != null && locs_equal(mouseover_loc, pixel_pos_to_loc(xpos, ypos))) {
+		return;
+	}
+
+	mouseover_loc = pixel_pos_to_loc(xpos, ypos);
 
 	var loc_label = document.getElementById('loc_label');
 	loc_label.innerHTML = '' + mouseover_loc.x + ', ' + mouseover_loc.y;
+
+	console.log('mouse move: ' + xpos + ', ' + ypos);
+
+	var info_label = document.getElementById('info_label');
+	info_label.innerHTML = '';
+
+	for(var n = 0; n != game.units.length; ++n) {
+		if(locs_equal(game.units[n], mouseover_loc)) {
+			current_info_displayed = null;
+
+			var unit = game.units[n];
+			info_label.innerHTML = describe_unit(game.units[n]);
+			break;
+		}
+	}
 }
 
 function mouse_down(e) {
@@ -1362,7 +1449,7 @@ function Spell(element) {
 
 	this.monster = element.getAttribute('monster');
 	if(this.monster && !unit_animations[this.monster]) {
-		load_unit_animation(this.monster);
+		load_unit_prototype(this.monster);
 	}
 }
 
