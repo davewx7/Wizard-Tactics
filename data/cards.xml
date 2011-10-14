@@ -150,6 +150,15 @@
 >
 	</spell>
 
+	<spell 	id="ilia_shield_maiden"
+	type="monster"
+	name="Ilia Shield Maiden"
+	monster="ilia_shield_maiden"
+	description="Summon a shield maiden."
+	cost="hhhh"
+>
+	</spell>
+
 	<spell 	id="flesh_wound"
 	type="modification"
 	name="Flesh Wound"

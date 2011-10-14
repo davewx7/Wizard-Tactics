@@ -1,7 +1,7 @@
 Design Key:
 TYPE_OF_COST_TO_RECRUIT
 
-is_done unit_name cost
+[is_done] unit_name cost
 attack/life/move
 armor
 
@@ -275,3 +275,8 @@ Replenishing Feast 1
 Range 1
 
 Target unit heals 2 damage
+
+
+
+NOTES:
+To see functions available,	grep '^FUNCTION_DEF' src/game_formula_functions.cpp

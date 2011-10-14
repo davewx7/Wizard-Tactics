@@ -1145,7 +1145,8 @@ function process_response(response) {
 			}
 		}
 	} else if(element.tagName == 'game_created') {
-		send_xml('<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,terror,flesh_wound,fireball"/></commands>');
+		//send_xml('<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,terror,flesh_wound,fireball"/></commands>');
+		send_xml('<commands><setup/><spells resource_gain="0,0,0,0,10,0" spells="ilia_shield_maiden, anselm_high_guard"/></commands>');
 	} else if(element.tagName == 'select_unit_move') {
 		set_unit_move_info(new UnitMoveInfo(element));
 	} else if(element.tagName == 'choose_ability') {
