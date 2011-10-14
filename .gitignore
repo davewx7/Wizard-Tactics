@@ -8,3 +8,4 @@ test
 alpha-images*
 .sconsign.dblite
 .scons-option-cache
+*.kate-swp
