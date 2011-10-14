@@ -44,7 +44,7 @@ range 2
 
 --
 
-Ilia Shield Maiden 4
+✔ Ilia Shield Maiden 4
 0/3/3
 defense: 1
 
