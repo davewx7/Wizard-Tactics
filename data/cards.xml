@@ -137,7 +137,7 @@
 	name="Vampire Bat"
 	monster="vampire_bat"
 	description="Summon Vampire Bat"
-	cost="bbb"
+	cost="bbbbb"
 >
 	</spell>
 

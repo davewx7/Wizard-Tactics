@@ -42,6 +42,7 @@ var gui_sections_index = {};
 
 var unit_animations = {};
 var unit_prototypes = {};
+var overlay_map = {};
 
 var unit_avatars = {};
 
@@ -366,6 +367,16 @@ function UnitMoveInfo(element) {
 	}
 }
 
+function parse_overlays(element) {
+	var overlay_elements = element.getElementsByTagName('overlay');
+	for(var n = 0; n != overlay_elements.length; ++n) {
+		var overlay = new UnitAnimation(overlay_elements[n]);
+		overlay.id = overlay_elements[n].getAttribute('id');
+		overlay_map[overlay.id] = overlay;
+		console.log('add overlay: "' + overlay.id + '"');
+	}
+}
+
 function create_ability_table(unit) {
 	var unit_td = document.getElementById('unit_td');
 	var abilities_table = document.createElement('table');
@@ -508,6 +519,7 @@ function draw_player(canvas, player) {
 
 	var context = canvas.getContext('2d');
 
+	context.fillStyle = '#ffffff';
 	context.fillRect(0, 0, canvas.width, canvas.height);
 
 	var xpos = 5, ypos = 5;
@@ -528,6 +540,11 @@ function draw_player(canvas, player) {
 			}
 		}
 	}
+
+	ypos += 20;
+
+	context.fillStyle = '#000000';
+	context.fillText('Units: ' + player.unit_limit, 5, ypos);
 }
 
 function draw_ability(canvas, ability) {
@@ -731,6 +748,31 @@ function Unit(element) {
 	for(var n = 0; n != ability_elements.length; ++n) {
 		this.abilities.push(new UnitAbility(ability_elements[n]));
 	}
+
+	this.overlays = [];
+	this.underlays = [];
+
+	if(element.getAttribute('overlays')) {
+		var overlays = element.getAttribute('overlays').split(',');
+		for(var n = 0; n != overlays.length; ++n) {
+			var ov = overlay_map[overlays[n]];
+			if(ov) {
+				this.overlays.push(ov);
+			}
+		}
+	}
+
+	if(element.getAttribute('underlays')) {
+		var underlays = element.getAttribute('underlays').split(',');
+		for(var n = 0; n != underlays.length; ++n) {
+			var ov = overlay_map[underlays[n]];
+			console.log('adding overlay "' + underlays[n] + '"..');
+			if(ov) {
+				console.log('DONE adding overlay "' + underlays[n] + '"..');
+				this.underlays.push(ov);
+			}
+		}
+	}
 }
 
 function describe_unit(unit) {
@@ -916,8 +958,17 @@ function draw_unit(canvas, avatar) {
 		canvas.scale(-1, 1);
 		x = -x;
 	}
+
+	for(var n = 0; n != avatar.unit.underlays.length; ++n) {
+		draw_unit_animation(canvas, avatar.unit.underlays[n], x, y);
+	}
 	
 	draw_unit_animation(canvas, avatar.anim, x, y);
+
+	for(var n = 0; n != avatar.unit.overlays.length; ++n) {
+		draw_unit_animation(canvas, avatar.unit.overlays[n], x, y);
+	}
+
 	draw_unit_hitpoints(canvas, avatar.unit, x+14, y+14);
 
 	if(avatar.unit.has_moved) {
@@ -940,6 +991,7 @@ function draw_unit(canvas, avatar) {
 function Player(element) {
 	this.name = element.getAttribute('name');
 	this.resource_gain = [];
+	this.unit_limit = element.getAttribute('unit_limit');
 
 	if(!element.getAttribute('resources')) {
 		return;
@@ -1145,8 +1197,7 @@ function process_response(response) {
 			}
 		}
 	} else if(element.tagName == 'game_created') {
-		//send_xml('<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,terror,flesh_wound,fireball"/></commands>');
-		send_xml('<commands><setup/><spells resource_gain="0,0,0,0,10,0" spells="ilia_shield_maiden, anselm_high_guard"/></commands>');
+		send_xml('<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,vampire_bat,terror,flesh_wound,fireball"/></commands>');
 	} else if(element.tagName == 'select_unit_move') {
 		set_unit_move_info(new UnitMoveInfo(element));
 	} else if(element.tagName == 'choose_ability') {
@@ -1320,8 +1371,6 @@ function mouse_move(e) {
 
 	var loc_label = document.getElementById('loc_label');
 	loc_label.innerHTML = '' + mouseover_loc.x + ', ' + mouseover_loc.y;
-
-	console.log('mouse move: ' + xpos + ', ' + ypos);
 
 	var info_label = document.getElementById('info_label');
 	info_label.innerHTML = '';
@@ -1499,6 +1548,7 @@ function load_cached_images() {
 
 	download_xml_file(data_url + 'wizard-data/cards.xml', parse_spells);
 	download_xml_file(data_url + 'wizard-data/gui.xml', parse_gui);
+	download_xml_file(data_url + 'wizard-data/unit_overlays.xml', parse_overlays);
 
 	window.requestAnimFrame = (function(){
       return  window.requestAnimationFrame       || 

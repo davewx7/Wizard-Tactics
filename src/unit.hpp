@@ -73,6 +73,10 @@ public:
 	void take_damage(int amount) { damage_taken_ += amount; }
 	void heal();
 
+	int maintenance_cost() const { return maintenance_cost_; }
+
+	bool scout() const { return scout_; }
+
 	const std::vector<hex::location>& movement_path() const { return movement_path_; }
 
 	const movement_type& move_type() const { return *move_type_; }
@@ -107,7 +111,10 @@ private:
 
 	int damage_taken_;
 
-	bool has_moved_;
+	//the cost of the unit toward the unit limit. Default to 1.
+	int maintenance_cost_;
+
+	bool has_moved_, scout_;
 	std::vector<hex::location> movement_path_;
 
 	std::vector<mod_ptr> mods_;

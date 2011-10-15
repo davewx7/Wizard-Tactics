@@ -163,6 +163,8 @@ wml::node_ptr game::write() const
 	foreach(const player& p, players_) {
 		wml::node_ptr player_node(new wml::node("player"));
 		player_node->set_attr("name", p.name);
+		player_node->set_attr("unit_limit", formatter() << get_player_unit_limit_slots_used(nplayer) << "/" << get_player_unit_limit(nplayer));
+
 
 		std::ostringstream stream;
 		foreach(const held_card& c, p.spells) {
@@ -300,7 +302,10 @@ void game::handle_message(int nplayer, const TiXmlElement& msg)
 
 		u->set_loc(to_loc);
 		u->set_moved();
-		capture_tower(to_loc, u);
+
+		if(!u->scout()) {
+			capture_tower(to_loc, u);
+		}
 
 		do_state_based_actions();
 
@@ -1058,4 +1063,31 @@ bool can_player_pay_cost(int side, const std::vector<int>& v)
 	}
 
 	return true;
+}
+
+int get_player_unit_limit_slots_used(int side)
+{
+	if(side < 0 || side >= game::current()->players().size()) {
+		return 0;
+	}
+
+	int slots = 0;
+	const game& g = *game::current();
+	foreach(unit_ptr u, g.units()) {
+		if(u->side() == side) {
+			slots += u->maintenance_cost();
+		}
+	}
+
+	return slots;
+}
+
+int get_player_unit_limit(int side)
+{
+	if(side < 0 || side >= game::current()->players().size()) {
+		return 0;
+	}
+
+	const game::player& p = game::current()->players()[side];
+	return p.towers.size() + 2;
 }

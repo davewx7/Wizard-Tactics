@@ -157,6 +157,10 @@ std::vector<wml::node_ptr> default_ai_player::play()
 			if(card->monster_id()) {
 
 				const_unit_ptr proto = unit::get_prototype(*card->monster_id());
+				if(proto->maintenance_cost() > (get_player_unit_limit(player_id()) - get_player_unit_limit_slots_used(player_id()))) {
+					continue;
+				}
+
 				ASSERT_LOG(proto.get() != NULL, "INVALID MONSTER ID: " << card->monster_id());
 
 				hex::location summoning_hex;

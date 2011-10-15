@@ -127,4 +127,7 @@ public:
 
 bool can_player_pay_cost(int side, const std::vector<int>& v);
 
+int get_player_unit_limit_slots_used(int side);
+int get_player_unit_limit(int side);
+
 #endif

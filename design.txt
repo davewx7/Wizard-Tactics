@@ -168,9 +168,9 @@ summons Blood
 
 --
 
-✔ Vampire Bat 3
-1/2/4
-Flying
+✔ Vampire Bat 5
+1/2/5
+Flying, Scout, Volunteer
 
 --
 

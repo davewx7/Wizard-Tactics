@@ -565,6 +565,13 @@ wml::node_ptr monster_card::play_card(unit* caster, int side, const std::vector<
 
 bool monster_card::is_card_playable(unit* caster, int side, const std::vector<hex::location>& targets, std::vector<hex::location>& possible_targets) const
 {
+	const int slots_available = get_player_unit_limit(side) - get_player_unit_limit_slots_used(side);
+
+	const_unit_ptr proto = unit::get_prototype(monster_);
+	if(proto->maintenance_cost() > slots_available) {
+		return false;
+	}
+
 	std::vector<hex::location> valid_targets;
 	const bool targets_valid = calculate_valid_targets(NULL, side, valid_targets);
 	if(!targets_valid) {

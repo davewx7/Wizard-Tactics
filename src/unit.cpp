@@ -91,7 +91,9 @@ unit::unit(wml::const_node_ptr node)
     armor_(wml::get_int(node, "armor")),
 	move_(wml::get_int(node, "move")),
 	damage_taken_(wml::get_int(node, "damage_taken")),
+	maintenance_cost_(wml::get_int(node, "maintenance_cost", 1)),
 	has_moved_(wml::get_bool(node, "has_moved", false)),
+	scout_(wml::get_bool(node, "scout", false)),
 	mod_id_(wml::get_int(node, "mod_id")),
 	move_type_(movement_type::get(node->attr("movement_type"))),
 	can_summon_(node->attr("can_summon")),
@@ -154,8 +156,16 @@ wml::node_ptr unit::write() const
 	node->set_attr("move", formatter() << move_);
 	node->set_attr("damage_taken", formatter() << damage_taken_);
 
+	if(maintenance_cost_ != 1) {
+		node->set_attr("maintenance_cost", formatter() << maintenance_cost_);
+	}
+
 	if(has_moved_) {
 		node->set_attr("has_moved", "yes");
+	}
+
+	if(scout_) {
+		node->set_attr("scout", "yes");
 	}
 
 	node->set_attr("mod_id", formatter() << mod_id_);
