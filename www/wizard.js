@@ -13,6 +13,7 @@ var image_store = [];
 var images_cache = {};
 var user_id = '';
 var player_side = -1;
+var players_signed_up_for_game = 0;
 var game = null;
 var data_url = 'http://' + server_hostname + '/dave/';
 
@@ -373,7 +374,6 @@ function parse_overlays(element) {
 		var overlay = new UnitAnimation(overlay_elements[n]);
 		overlay.id = overlay_elements[n].getAttribute('id');
 		overlay_map[overlay.id] = overlay;
-		console.log('add overlay: "' + overlay.id + '"');
 	}
 }
 
@@ -766,9 +766,7 @@ function Unit(element) {
 		var underlays = element.getAttribute('underlays').split(',');
 		for(var n = 0; n != underlays.length; ++n) {
 			var ov = overlay_map[underlays[n]];
-			console.log('adding overlay "' + underlays[n] + '"..');
 			if(ov) {
-				console.log('DONE adding overlay "' + underlays[n] + '"..');
 				this.underlays.push(ov);
 			}
 		}
@@ -798,6 +796,12 @@ function describe_unit(unit) {
 
 	desc += '</p>';
 
+	return desc;
+}
+
+function describe_spell(spell) {
+	var desc = '';
+	desc += '<p><h3>' + spell.name + '</h3></p><p>' + spell.description + '</p>';
 	return desc;
 }
 
@@ -1119,6 +1123,57 @@ function Game(element) {
 	}
 }
 
+var current_games_table = null;
+
+function handle_lobby(element) {
+
+	if(game != null) {
+		return;
+	}
+
+	var lobby_para = document.getElementById('lobby_para');
+	lobby_para.style.display = 'block';
+
+	if(current_games_table != null) {
+		lobby_para.removeChild(current_games_table);
+	}
+
+	var games_table = document.createElement('table');
+
+	var games = element.getElementsByTagName('game');
+	for(var n = 0; n != games.length; ++n) {
+		var g = games[n];
+		var row = document.createElement('tr');
+		var cell = document.createElement('td');
+		var text = document.createTextNode(g.getAttribute('clients'));
+		cell.appendChild(text);
+		row.appendChild(cell);
+
+		console.log('game started: "' + g.getAttribute('started') + '"');
+
+		if(g.getAttribute('started') == 'no') {
+			cell = document.createElement('td');
+
+			var button = document.createElement('input');
+			button.setAttribute('type', 'button');
+			button.setAttribute('value', 'Join Game');
+			button.onclick = function() {
+				send_xml('<commands><join_game/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,vampire_bat,terror,flesh_wound,fireball"/></commands>');
+			};
+
+			cell.appendChild(button);
+			row.appendChild(cell);
+		}
+
+		games_table.appendChild(row);
+	}
+
+	lobby_para.appendChild(games_table);
+
+	current_games_table = games_table;
+
+}
+
 function process_response(response) {
 	if(animation_time > 0) {
 		responses_waiting_for_processing.push(response);
@@ -1127,13 +1182,19 @@ function process_response(response) {
 
 	var element = response.documentElement;
 
-	if(element.tagName == 'game') {
+	if(element.tagName == 'lobby') {
+		handle_lobby(element);
+	} else if(element.tagName == 'game') {
 		spell_casting = null;
 		spell_targets = null;
 		legal_targets = null;
 		ability_using = null;
 		unit_casting = null;
 		clear_choose_ability_info();
+
+		//make sure we are showing the main game table.
+		document.getElementById('game_para').style.display = 'block';
+		document.getElementById('lobby_para').style.display = 'none';
 
 		game = new Game(element);
 		draw_map_info = []; //clear draw map info so it's rebuilt.
@@ -1169,10 +1230,11 @@ function process_response(response) {
 
 						var spell = spells_index[this.spell.id];
 						var info_label = document.getElementById('info_label');
-						info_label.innerHTML = spell.description;
 
 						if(spell.monster && unit_prototypes[spell.monster]) {
 							info_label.innerHTML += describe_unit(unit_prototypes[spell.monster]);
+						} else {
+							info_label.innerHTML = describe_spell(spell);
 						}
 						
 					}.bind(spell);
@@ -1196,8 +1258,15 @@ function process_response(response) {
 				current_spells_table = spells_table;
 			}
 		}
-	} else if(element.tagName == 'game_created') {
-		send_xml('<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,vampire_bat,terror,flesh_wound,fireball"/></commands>');
+	} else if(element.tagName == 'game_created' || element.tagName == 'join_game') {
+		if(element.tagName == 'join_game') {
+			players_signed_up_for_game++;
+			console.log('player joined game');
+		}
+
+		if(players_signed_up_for_game >= 1) {
+			send_xml('<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,vampire_bat,terror,flesh_wound,fireball"/></commands>');
+		}
 	} else if(element.tagName == 'select_unit_move') {
 		set_unit_move_info(new UnitMoveInfo(element));
 	} else if(element.tagName == 'choose_ability') {
@@ -1459,8 +1528,29 @@ function end_turn() {
 	send_xml('<end_turn skip="yes"/>');
 }
 
+function resign_game() {
+	player_side = -1;
+	game = null;
+	spell_casting = null;
+	unit_casting = null;
+	draw_map_info = [];
+	draw_map_info_nobg = [];
+	document.getElementById('game_para').style.display = 'none';
+	send_xml('<enter_lobby/>');
+}
+
 function create_game_with_bots() {
+	players_signed_up_for_game = 1;
 	send_xml('<create_game bots="1"/>');
+}
+
+function create_game() {
+	players_signed_up_for_game = 0;
+	send_xml('<create_game/>');
+}
+
+function enter_lobby() {
+	send_xml('<enter_lobby/>');
 }
 
 function anim_loop() {
@@ -1560,6 +1650,4 @@ function load_cached_images() {
                 window.setTimeout(callback, 1000 / 60);
               };
     })();
-
 }
-

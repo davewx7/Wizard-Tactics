@@ -30,6 +30,7 @@ private:
 	void handle_incoming_data(socket_ptr socket, const char* i1, const char* i2);
 	void handle_message(socket_ptr socket, const std::vector<char>& msg);
 	void handle_message(socket_ptr socket, const TiXmlElement& msg);
+	void handle_message_internal(socket_ptr socket, const TiXmlElement& msg);
 
 	void close_ajax(socket_ptr socket);
 
@@ -68,11 +69,16 @@ private:
 
 	void queue_msg(const std::string& nick, const std::string& msg);
 
+	void create_lobby_msg(std::string& str);
+	void send_lobby_msg();
+
 	std::map<socket_ptr, std::string> waiting_connections_;
 
 	std::map<socket_ptr, socket_info> connections_;
 	std::map<std::string, client_info> clients_;
 	std::vector<game_info_ptr> games_;
+
+	int nheartbeat_;
 };
 
 #endif

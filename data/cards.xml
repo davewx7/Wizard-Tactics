@@ -165,6 +165,7 @@
 	targets="1"
 	cost="b"
 	range="2"
+	description="Inflict 1 damage on target unit"
 	on_resolve="if(target_unit, add(target_unit.damage, 1)) where target_unit = get_unit_at_loc(target)"
 >
 	</spell>
