@@ -2,6 +2,7 @@
 #define SERVER_HPP_INCLUDED
 
 #include "game.hpp"
+#include "player_info.hpp"
 #include "tinyxml.h"
 
 #include <deque>
@@ -77,6 +78,9 @@ private:
 	std::map<socket_ptr, socket_info> connections_;
 	std::map<std::string, client_info> clients_;
 	std::vector<game_info_ptr> games_;
+
+	std::map<std::string, player_info_ptr> player_info_;
+	player_info_ptr get_player_info(const std::string& id);
 
 	int nheartbeat_;
 };

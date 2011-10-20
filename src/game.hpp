@@ -7,6 +7,7 @@
 #include "card.hpp"
 #include "city.hpp"
 #include "formula_callable.hpp"
+#include "player_info.hpp"
 #include "tile.hpp"
 #include "tile_logic.hpp"
 #include "tinyxml.h"
@@ -42,8 +43,8 @@ public:
 
 	const std::vector<city_ptr>& cities() const { return cities_; }
 
-	void add_player(const std::string& name);
-	void add_ai_player(const std::string& name);
+	void add_player(const std::string& name, const player_info& pl);
+	void add_ai_player(const std::string& name, const player_info& pl);
 
 	struct player {
 		hex::location castle;

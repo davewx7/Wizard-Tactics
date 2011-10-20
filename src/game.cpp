@@ -250,17 +250,7 @@ void game::handle_message(int nplayer, const TiXmlElement& msg)
 		state_ = STATE_PLAYING;
 		player_casting_ = player_turn_ = 0;
 	} else if(type == "spells") {
-		std::cerr << "READ DECK FOR " << nplayer << "\n";
-		ASSERT_INDEX_INTO_VECTOR(nplayer, players_);
-		players_[nplayer].spells = read_deck(msg.Attribute("spells"));
-
-		players_[nplayer].resource_gain.resize(resource::num_resources());
-		int num_resources = resource::num_resources();
-		util::split_into_ints(msg.Attribute("resource_gain"), &players_[nplayer].resource_gain[0], &num_resources);
-
-		players_[nplayer].resources = players_[nplayer].resource_gain;
-
-		draw_hand(nplayer);
+		//no-op.
 		queue_message(wml::output_xml(write()));
 	} else if(type == "select_unit") {
 		const hex::location loc(parse_loc_from_xml(msg));
@@ -856,17 +846,33 @@ tile* game::get_tile(int x, int y)
 	return &tiles_[y*width_ + x];
 }
 
-void game::add_player(const std::string& name)
+void game::add_player(const std::string& name, const player_info& pl)
 {
 	players_.push_back(player());
 	players_.back().name = name;
+
+	foreach(const std::string& sp, pl.deck()) {
+		held_card card;
+		card.card = card::get(sp);
+		card.embargo = 0;
+		players_.back().spells.push_back(card);
+	}
+	players_.back().resources = players_.back().resource_gain = pl.resources();
 }
 
-void game::add_ai_player(const std::string& name)
+void game::add_ai_player(const std::string& name, const player_info& pl)
 {
 	players_.push_back(player());
 	players_.back().name = name;
 	ai_.push_back(boost::shared_ptr<ai_player>(ai_player::create(*this, players_.size()-1)));
+
+	foreach(const std::string& sp, pl.deck()) {
+		held_card card;
+		card.card = card::get(sp);
+		card.embargo = 0;
+		players_.back().spells.push_back(card);
+	}
+	players_.back().resources = players_.back().resource_gain = pl.resources();
 }
 
 namespace {

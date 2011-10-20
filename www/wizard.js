@@ -687,6 +687,9 @@ function draw_unit_hitpoints(canvas, unit, x, y) {
 
 function download_xml_file(url, onget) {
 	var request = new XMLHttpRequest();
+	var info = {
+		url: url,
+	};
 	request.open("GET", url);
 	request.onreadystatechange = function() {
 		var done = 4, ok = 200;
@@ -694,9 +697,10 @@ function download_xml_file(url, onget) {
 			if(request.responseXML) {
   		  		var element = request.responseXML.documentElement;
 				onget(element);
+				on_file_completed_download(this.url);
 			}
 		}
-	};
+	}.bind(info);
 
 	request.send(null);
 }
@@ -1174,6 +1178,146 @@ function handle_lobby(element) {
 
 }
 
+var current_deck_table = null;
+var current_collection_table = null;
+
+function handle_player_info(element) {
+	if(game != null) {
+		return;
+	}
+
+	var editor_para = document.getElementById('editor_para');
+	editor_para.style.display = 'block';
+
+	var deck_div = document.getElementById('deck_div');
+	var collection_div = document.getElementById('collection_div');
+
+	var deck_table = document.createElement('table');
+	var collection_table = document.createElement('table');
+
+	var spells = element.getAttribute('spells').split(',');
+
+	var deck_rows = {};
+	var collection_rows = {};
+
+	for(var n = 0; n != spells.length; ++n) {
+		var spell = spells_index[spells[n]];
+
+		var row = document.createElement('tr');
+		var cell = document.createElement('td');
+		var canvas = document.createElement('canvas');
+		canvas.width = 108;
+		canvas.height = 120;
+		cell.appendChild(canvas);
+
+		var spell_info = {
+			id: spells[n],
+			canvas: canvas,
+			castable: 1,
+		};
+
+		canvas.onmousedown = function(event) {
+			send_xml('<modify_deck remove="' + this.spell.id + '"/>');
+		}.bind(spell_info);
+
+		draw_spell(spell_info);
+
+		row.appendChild(cell);
+		deck_table.appendChild(row);
+
+		deck_rows[spells[n]] = row;
+	}
+
+	var collection = element.getAttribute('collection').split(',');
+	for(var n = 0; n != collection.length; ++n) {
+		var spell = spells_index[collection[n]];
+
+		var row = document.createElement('tr');
+		var cell = document.createElement('td');
+		var canvas = document.createElement('canvas');
+		canvas.width = 108;
+		canvas.height = 120;
+		cell.appendChild(canvas);
+		row.appendChild(cell);
+
+		var spell_info = {
+			id: collection[n],
+			canvas: canvas,
+			castable: 1,
+		};
+
+		canvas.onmousedown = function(event) {
+			send_xml('<modify_deck add="' + this.spell.id + '"/>');
+		}.bind(spell_info);
+
+		draw_spell(spell_info);
+
+		collection_table.appendChild(row);
+
+		collection_rows[collection[n]] = row;
+	}
+
+	for(var key in collection_rows) {
+		if(deck_rows[key]) {
+			collection_rows[key].style.display = 'none'
+		} else {
+			collection_rows[key].style.display = 'block'
+		}
+	}
+
+	deck_div.appendChild(deck_table);
+	collection_div.appendChild(collection_table);
+
+	if(current_deck_table != null) {
+		deck_div.removeChild(current_deck_table);
+	}
+
+	if(current_collection_table != null) {
+		collection_div.removeChild(current_collection_table);
+	}
+
+	current_deck_table = deck_table;
+	current_collection_table = collection_table;
+
+	var resource_gain = element.getAttribute('resource_gain').split(',');
+	var total_num_resources = 0;
+	for(var n = 0; n != resource_gain.length; ++n) {
+		total_num_resources += parseInt(resource_gain[n]);
+	}
+
+	for(var n = 0; n != ResourceID.length; ++n) {
+		var resource = ResourceID[n];
+		var num_resources = 0;
+		if(n < resource_gain.length) {
+			num_resources = parseInt(resource_gain[n]);
+		}
+
+		var canvas = document.getElementById('resource_canvas_' + resource);
+		if(!canvas) {
+			continue;
+		}
+		canvas.width = canvas.width; //clear the canvas
+		var context = canvas.getContext('2d');
+		
+		var icon = 'magic-icon-' + resource;
+		var gui_section = gui_sections_index[icon];
+		draw_gui_section(gui_section, context, 0, 4);
+
+		for(var m = 0; m < num_resources; ++m) {
+			draw_gui_section(gui_section, context, 24 + m*8 + (m >= 5 ? 8 : 0), 4);
+		}
+
+		var add_button = document.getElementById('add_resource_button_' + resource);
+		var remove_button = document.getElementById('del_resource_button_' + resource);
+		add_button.style.display = total_num_resources < 10 ? 'block' : 'none';
+		remove_button.style.display = num_resources > 0 ? 'block' : 'none';
+	}
+}
+
+function modify_resources(resource, delta) {
+	send_xml('<modify_resources resource="' + resource + '" delta="' + delta + '"/>');
+}
+
 function process_response(response) {
 	if(animation_time > 0) {
 		responses_waiting_for_processing.push(response);
@@ -1184,6 +1328,8 @@ function process_response(response) {
 
 	if(element.tagName == 'lobby') {
 		handle_lobby(element);
+	} else if(element.tagName == 'player_info') {
+		handle_player_info(element);
 	} else if(element.tagName == 'game') {
 		spell_casting = null;
 		spell_targets = null;
@@ -1195,6 +1341,7 @@ function process_response(response) {
 		//make sure we are showing the main game table.
 		document.getElementById('game_para').style.display = 'block';
 		document.getElementById('lobby_para').style.display = 'none';
+		document.getElementById('editor_para').style.display = 'none';
 
 		game = new Game(element);
 		draw_map_info = []; //clear draw map info so it's rebuilt.
@@ -1631,14 +1778,37 @@ function parse_gui(element) {
 	}
 }
 
+var files_needed_to_start_game = new Array();
+
+function on_file_completed_download(fname) {
+	var has_keys = 0;
+	for(var key in files_needed_to_start_game) { has_keys++; }
+	console.log('completed download: ' + fname + ' -> ' + has_keys);
+	if(has_keys != 0) {
+		delete files_needed_to_start_game[fname];
+		has_keys = 0;
+		for(var key in files_needed_to_start_game) { has_keys = 1; }
+		if(has_keys == 0) {
+			enter_lobby();
+			anim_loop();
+		}
+	}
+}
+
 function load_cached_images() {
 	load_cached_image('tired.png');
 	load_cached_image('card.png');
 	load_cached_image('towers.png');
 
-	download_xml_file(data_url + 'wizard-data/cards.xml', parse_spells);
-	download_xml_file(data_url + 'wizard-data/gui.xml', parse_gui);
-	download_xml_file(data_url + 'wizard-data/unit_overlays.xml', parse_overlays);
+	var url_prefix = data_url + 'wizard-data/';
+
+	files_needed_to_start_game[url_prefix + 'cards.xml'] = 1;
+	files_needed_to_start_game[url_prefix + 'gui.xml'] = 1;
+	files_needed_to_start_game[url_prefix + 'unit_overlays.xml'] = 1;
+
+	download_xml_file(url_prefix + 'cards.xml', parse_spells);
+	download_xml_file(url_prefix + 'gui.xml', parse_gui);
+	download_xml_file(url_prefix + 'unit_overlays.xml', parse_overlays);
 
 	window.requestAnimFrame = (function(){
       return  window.requestAnimationFrame       || 

@@ -6,8 +6,12 @@
 #include <boost/shared_ptr.hpp>
 
 #include "asserts.hpp"
+#include "filesystem.hpp"
 #include "foreach.hpp"
 #include "server.hpp"
+#include "string_utils.hpp"
+#include "xml_parser.hpp"
+#include "xml_writer.hpp"
 
 namespace
 {
@@ -16,6 +20,16 @@ int xml_int(const TiXmlElement& el, const char* s)
 	int res = 0;
 	el.QueryIntAttribute(s, &res);
 	return res;
+}
+
+std::string xml_str(const TiXmlElement& el, const char* s)
+{
+	const char* attr = el.Attribute(s);
+	if(!attr) {
+		return "";
+	}
+
+	return attr;
 }
 }
 
@@ -132,15 +146,50 @@ void server::handle_message_internal(socket_ptr socket, const TiXmlElement& node
 
 		queue_msg(info.nick, msg);
 
+		player_info_ptr pl = get_player_info(info.nick);
+		wml::node_ptr player_data = pl->write();
+		queue_msg(info.nick, wml::output_xml(pl->write()));
+	} else if(name == "modify_resources") {
+		player_info_ptr pl = get_player_info(info.nick);
+
+		const char* resource = node.Attribute("resource");
+		if(!resource) {
+			std::cerr << "NO RESOURCE FOUND IN MODIFY_RESOURCS\n";
+			return;
+		}
+
+		const int delta = xml_int(node, "delta");
+
+		pl->modify_resources(*resource, delta);
+		queue_msg(info.nick, wml::output_xml(pl->write()));
+	} else if(name == "modify_deck") {
+		player_info_ptr pl = get_player_info(info.nick);
+
+		if(node.Attribute("remove")) {
+			const std::string value = xml_str(node, "remove");
+			foreach(const std::string& s, util::split(value, ',')) {
+				pl->remove_from_deck(s);
+			}
+		}
+
+		if(node.Attribute("add")) {
+			const std::string value = xml_str(node, "add");
+			foreach(const std::string& s, util::split(value, ',')) {
+				pl->add_to_deck(s);
+			}
+		}
+
+		queue_msg(info.nick, wml::output_xml(pl->write()));
 	} else if(name == "create_game") {
 		game_info_ptr new_game(new game_info);
 		games_.push_back(new_game);
 		const game_context context(new_game->game_state.get());
 		new_game->clients.push_back(info.nick);
-		new_game->game_state->add_player(info.nick);
+		new_game->game_state->add_player(info.nick, *get_player_info(info.nick));
 		const int nbots = xml_int(node, "bots");
 		for(int n = 0; n != nbots; ++n) {
-			new_game->game_state->add_ai_player("bot");
+			player_info info(wml::parse_xml(sys::read_file("deck.xml")));
+			new_game->game_state->add_ai_player("bot", info);
 		}
 
 		client_info& cli_info = clients_[info.nick];
@@ -159,7 +208,7 @@ void server::handle_message_internal(socket_ptr socket, const TiXmlElement& node
 			if(i->second.game && i->second.game->game_state->started() == false) {
 				const game_context context(i->second.game->game_state.get());
 				i->second.game->clients.push_back(info.nick);
-				i->second.game->game_state->add_player(info.nick);
+				i->second.game->game_state->add_player(info.nick, *get_player_info(info.nick));
 				cli_info.nplayer = i->second.game->clients.size() - 1;
 				cli_info.game = i->second.game;
 
@@ -329,4 +378,15 @@ void server::send_lobby_msg()
 	    i != clients_.end(); ++i){
 		queue_msg(i->first, msg);
 	}
+}
+
+player_info_ptr server::get_player_info(const std::string& id)
+{
+	player_info_ptr& p = player_info_[id];
+	if(!p) {
+		p.reset(new player_info);
+		p->set_id(id);
+	}
+
+	return p;
 }
