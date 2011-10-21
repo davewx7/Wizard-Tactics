@@ -51,6 +51,8 @@ std::string find_file(const std::string& name);
 
 void make_dir(const std::string& dirname);
 
+void move_file(const std::string& from, const std::string& to);
+
 }
 
 #endif

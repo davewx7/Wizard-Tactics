@@ -742,8 +742,16 @@ function Unit(element) {
 	this.name = element.getAttribute('name');
 	this.key = parseInt(element.getAttribute('key'));
 	this.life = parseInt(element.getAttribute('life'));
+	this.effective_life = parseInt(element.getAttribute('effective_life'));
+	if(!this.effective_life) {
+		this.effective_life = life;
+	}
 	this.damage_taken = parseInt(element.getAttribute('damage_taken'));
 	this.armor = parseInt(element.getAttribute('armor'));
+	this.effective_armor = parseInt(element.getAttribute('effective_armor'));
+	if(!this.effective_armor) {
+		this.effective_armor = armor;
+	}
 	this.move = parseInt(element.getAttribute('move'));
 	this.has_moved = element.getAttribute('has_moved') == 'yes';
 	this.abilities = [];
@@ -984,7 +992,15 @@ function draw_unit(canvas, avatar) {
 		if(img) {
 			canvas.drawImage(img, x - 6, y, img.width*2, img.height*2);
 		}
+	}
 
+	if(avatar.unit.armor != 0) {
+
+		var gui_section = gui_sections_index[avatar.unit.armor < 0 ? 'vulnerable-icon' : 'defense_icon'];
+		var num = avatar.unit.armor > 0 ? avatar.unit.armor : -avatar.unit.armor;
+		for(var n = 0; n != num; ++n) {
+			draw_gui_section(gui_section, canvas, x - 10, y + 12 + n*6);
+		}
 	}
 
 	if(avatar.unit.side&1) {

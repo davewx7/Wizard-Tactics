@@ -545,4 +545,9 @@ void make_dir(const std::string& dirname)
 	mkdir(dirname.c_str(),AccessMode);
 }
 
+void move_file(const std::string& from, const std::string& to)
+{
+	rename(from.c_str(), to.c_str());
+}
+
 }

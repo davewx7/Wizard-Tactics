@@ -10,6 +10,7 @@
 #include "foreach.hpp"
 #include "server.hpp"
 #include "string_utils.hpp"
+#include "wml_utils.hpp"
 #include "xml_parser.hpp"
 #include "xml_writer.hpp"
 
@@ -40,8 +41,17 @@ server::game_info::game_info() : game_state(new game)
 
 server::server(boost::asio::io_service& io_service)
   : acceptor_(io_service, tcp::endpoint(tcp::v4(), 17000)),
-    timer_(io_service), nheartbeat_(0)
+    timer_(io_service), nheartbeat_(0), scheduled_write_(0)
 {
+	std::string data = sys::read_file("./wizard-server-data.xml");
+	if(data.empty() == false) {
+		wml::const_node_ptr node = wml::parse_xml(data);
+		FOREACH_WML_CHILD(player_info_node, node, "player_info") {
+			player_info_ptr p(new player_info(player_info_node));
+			player_info_[p->id()] = p;
+		}
+	}
+
 	start_accept();
 
 	heartbeat();
@@ -162,6 +172,8 @@ void server::handle_message_internal(socket_ptr socket, const TiXmlElement& node
 
 		pl->modify_resources(*resource, delta);
 		queue_msg(info.nick, wml::output_xml(pl->write()));
+
+		schedule_write();
 	} else if(name == "modify_deck") {
 		player_info_ptr pl = get_player_info(info.nick);
 
@@ -180,6 +192,8 @@ void server::handle_message_internal(socket_ptr socket, const TiXmlElement& node
 		}
 
 		queue_msg(info.nick, wml::output_xml(pl->write()));
+
+		schedule_write();
 	} else if(name == "create_game") {
 		game_info_ptr new_game(new game_info);
 		games_.push_back(new_game);
@@ -335,6 +349,19 @@ void server::heartbeat()
 		socket->close();
 	}
 
+	if(nheartbeat_ >= scheduled_write_) {
+		//write out the game recorded data.
+		wml::node_ptr node(new wml::node("server"));
+		for(std::map<std::string, player_info_ptr>::const_iterator i = player_info_.begin(); i != player_info_.end(); ++i) {
+			if(i->second) {
+				node->add_child(i->second->write());
+			}
+		}
+
+		sys::write_file("/tmp/wizard-server.xml", wml::output_xml(node));
+		sys::move_file("/tmp/wizard-server.xml", "./wizard-server-data.xml");
+	}
+
 	timer_.expires_from_now(boost::posix_time::seconds(1));
 	timer_.async_wait(boost::bind(&server::heartbeat, this));
 }
@@ -389,4 +416,13 @@ player_info_ptr server::get_player_info(const std::string& id)
 	}
 
 	return p;
+}
+
+void server::schedule_write()
+{
+	if(scheduled_write_) {
+		return;
+	}
+
+	scheduled_write_ = nheartbeat_ + 10;
 }
