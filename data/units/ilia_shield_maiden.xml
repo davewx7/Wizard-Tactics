@@ -6,13 +6,12 @@ side="0"
 life="3"
 armor="1"
 move="3"
->
 on_game_state_change="map(get_adjacent_units(unit), modify_unit_until_game_state_change(unit, 'defense', 1))"
+>
 	<stand 	image="units/units.png"
 	x="373"
 	y="236"
->
-	</stand>
+>	</stand>
 
 </unit>
 

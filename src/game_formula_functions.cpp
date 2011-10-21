@@ -74,6 +74,13 @@ public:
 	void execute(client_play_game* client) const {
 		std::cerr << "DEBUG: '" << str_ << "'\n";
 		debug_console::add_message(str_);
+		if(game::current()) {
+			std::string str = str_;
+			std::replace(str.begin(), str.end(), '"', '\'');
+			std::ostringstream s;
+			s << "<debug_message msg=\"" << str << "\"/>";
+			game::current()->queue_message(s.str());
+		}
 	}
 };
 
@@ -83,6 +90,7 @@ FUNCTION_DEF(debug, 1, -1, "debug(...): outputs arguments to console")
 		str += args()[n]->evaluate(variables).to_debug_string();
 	}
 
+	std::cerr << "EXECUTE DEBUG: " << str << "\n";
 	return variant(new debug_command(str));
 END_FUNCTION_DEF(debug)
 
