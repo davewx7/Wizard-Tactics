@@ -156,8 +156,15 @@
 	monster="ilia_shield_maiden"
 	description="Summon a shield maiden."
 	cost="hhhh"
->
-	</spell>
+>	</spell>
+
+	<spell 	id="duelist_of_tenser"
+	type="monster"
+	name="Duelist of Tenser"
+	monster="duelist_of_tenser"
+	description="Summon a duelist who was trained in the royal courts of Tenser!"
+	cost="hhhh"
+>	</spell>
 
 	<spell 	id="flesh_wound"
 	type="modification"

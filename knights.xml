@@ -1,5 +1,8 @@
-<spells#	   g,f,b,?,h,?
+ <!--	  	   g,f,b,?,h,? -->
+<spells
 resource_gain="0,0,0,0,10,0"
 spells="anselm_high_guard,
 		high_elf_archer"
 ></spells>
+
+<!--For list of functions, run:		./client --utility build_transparent_images		-->

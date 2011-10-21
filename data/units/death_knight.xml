@@ -15,14 +15,12 @@ move="3"
 	type="attack"
 	range="1"
 	damage="3"
->
-	</ability>
+>	</ability>
 
 	<stand 	image="units/units.png"
 	x="68"
 	y="198"
->
-	</stand>
+>	</stand>
 
 </unit>
 

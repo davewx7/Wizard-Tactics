@@ -180,7 +180,7 @@ Flying, Scout, Volunteer
 
 --
 
-Vampire Lord 4
+✔ Vampire Lord 4
 2/4/3
 Drains
 When an enemy unit is destroyed by Vampire Lord, replace it with a Vampire

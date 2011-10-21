@@ -1265,7 +1265,8 @@ function process_response(response) {
 		}
 
 		if(players_signed_up_for_game >= 1) {
-			send_xml('<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,vampire_bat,terror,flesh_wound,fireball"/></commands>');
+			send_xml('<commands><setup/><spells resource_gain="0,0,0,0,10,0" spells="ilia_shield_maiden, duelist_of_tenser"/></commands>');
+			//Spell-heavy deck:		<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,vampire_bat,terror,flesh_wound,fireball"/></commands>
 		}
 	} else if(element.tagName == 'select_unit_move') {
 		set_unit_move_info(new UnitMoveInfo(element));

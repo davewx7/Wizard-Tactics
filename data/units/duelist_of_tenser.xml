@@ -1,0 +1,34 @@
+<unit id="duelist_of_tenser"
+name="Duelist of Tenser"
+upkeep="h"
+underlays="shadow"
+side="0"
+life="3"
+armor="1"
+move="4"
+>
+on_game_state_change="
+	if(size(get_adjacent_units(unit)) = 1, [
+		modify_unit_until_game_state_change(unit, 'defense', 1),
+		modify_unit_until_game_state_change(unit, 'sword.damage', 1),
+		debug('DEBUG: duel mode engaged')
+	],
+	debug('DEBUG: {get_adjacent_units(unit)}')
+	)"
+	
+<stand 	image="units/units.png"
+	x="373"
+	y="236"
+>	</stand>
+	
+<ability 	id="sword"
+	name="Sabre"
+	description="Deal 1 damage, 2 if in a duel."
+	icon="sword.png"
+	targets="1"
+	type="attack"
+	range="1"
+	damage="1"
+>	</ability>
+</unit>
+
