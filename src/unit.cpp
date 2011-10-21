@@ -156,6 +156,12 @@ wml::node_ptr unit::write() const
 	node->set_attr("move", formatter() << move_);
 	node->set_attr("damage_taken", formatter() << damage_taken_);
 
+	//derived stats after temporary modifications are applied.
+	//Useful for some clients though won't be used when reading the unit
+	//back in again.
+	node->set_attr("effective_life", formatter() << life());
+	node->set_attr("effective_armor", formatter() << armor());
+
 	if(maintenance_cost_ != 1) {
 		node->set_attr("maintenance_cost", formatter() << maintenance_cost_);
 	}

@@ -83,6 +83,8 @@ private:
 	player_info_ptr get_player_info(const std::string& id);
 
 	int nheartbeat_;
+	int scheduled_write_;
+	void schedule_write();
 };
 
 #endif

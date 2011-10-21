@@ -1,4 +1,5 @@
 #include <numeric>
+#include <string.h>
 
 #include "card.hpp"
 #include "filesystem.hpp"
@@ -9,15 +10,22 @@
 #include "wml_utils.hpp"
 #include "xml_parser.hpp"
 
+bool is_dummy_card(const std::string& card) {
+	return strstr(card.c_str(), "dummy") != NULL;
+}
+
 player_info::player_info()
 {
 	read(wml::parse_xml(sys::read_file("deck.xml")));
 	collection_ = card::get_all_cards();
+	collection_.erase(std::remove_if(collection_.begin(), collection_.end(), is_dummy_card), collection_.end());
 }
 
 player_info::player_info(wml::const_node_ptr node)
 {
 	read(node);
+	collection_ = card::get_all_cards(); //temporarily make everyone get all cards.
+	collection_.erase(std::remove_if(collection_.begin(), collection_.end(), is_dummy_card), collection_.end());
 }
 
 bool player_info::add_to_deck(const std::string& id)
