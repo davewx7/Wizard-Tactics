@@ -1325,8 +1325,10 @@ function process_response(response) {
 	}
 
 	var element = response.documentElement;
-
-	if(element.tagName == 'lobby') {
+	
+	if(element.tagName == 'debug_message') {
+		console.log('SERVER DEBUG MSG: ' + element.getAttribute('msg'));
+	} else if(element.tagName == 'lobby') {
 		handle_lobby(element);
 	} else if(element.tagName == 'player_info') {
 		handle_player_info(element);
