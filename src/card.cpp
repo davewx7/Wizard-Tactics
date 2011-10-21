@@ -24,19 +24,41 @@
 #include "wml_writer.hpp"
 #include "xml_writer.hpp"
 
-const_card_ptr card::get(const std::string& id)
+namespace {
+std::map<std::string, const_card_ptr> cards_map;
+std::vector<std::string> all_cards;
+
+void load_cards_map()
 {
-	static std::map<std::string, const_card_ptr> cache;
-	if(cache.empty()) {
+	if(cards_map.empty()) {
 		wml::const_node_ptr cards_node = wml::parse_wml_from_file("data/cards.xml");
 		FOREACH_WML_CHILD(card_node, cards_node, "spell") {
-			const_card_ptr new_card(create(card_node));
-			ASSERT_LOG(cache.count(new_card->id()) == 0, "CARD REPEATED: " << new_card->id());
-			cache[new_card->id()] = new_card;
+			const_card_ptr new_card(card::create(card_node));
+			ASSERT_LOG(cards_map.count(new_card->id()) == 0, "CARD REPEATED: " << new_card->id());
+			cards_map[new_card->id()] = new_card;
+			all_cards.push_back(new_card->id());
 		}
+
+		std::sort(all_cards.begin(), all_cards.end());
+	}
+}
+}
+
+const std::vector<std::string>& card::get_all_cards()
+{
+	load_cards_map();
+	return all_cards;
+}
+
+const_card_ptr card::get(const std::string& id)
+{
+	static std::map<std::string, const_card_ptr> ability_cards_map;
+
+	const_card_ptr card = cards_map[id];
+	if(card.get() == NULL) {
+		card = ability_cards_map[id];
 	}
 
-	const_card_ptr card = cache[id];
 	if(card.get() == NULL) {
 		std::string::const_iterator dot = std::find(id.begin(), id.end(), '.');
 		if(dot != id.end()) {
@@ -47,11 +69,11 @@ const_card_ptr card::get(const std::string& id)
 			if(unit_node.get() != NULL) {
 				FOREACH_WML_CHILD(card_node, unit_node, "ability") {
 					const_card_ptr new_card(create(card_node));
-					cache[unit_id + "." + card_node->attr("id").str()] = new_card;
+					ability_cards_map[unit_id + "." + card_node->attr("id").str()] = new_card;
 				}
 			}
 
-			card = cache[id];
+			card = ability_cards_map[id];
 		}
 	}
 

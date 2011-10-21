@@ -5,14 +5,82 @@
 	</script>
 	<script type="application/x-javascript" src="/dave/wizard.js">
 	</script>
+
+	<style type="text/css">
+
+	.deck_table { vertical-align: top; height:30em;  overflow:auto; }
+	</style>
 </head>
 
-	<body onload="init_wizard(); set_user_id('__USERID__'); load_game_data(); load_cached_images(); enter_lobby(); anim_loop();">
+	<body onload="init_wizard(); set_user_id('__USERID__'); load_game_data(); load_cached_images();">
 	<p id="lobby_para" style="display:none">
 
 	<input id="create_bot_button" type="submit" value="Play vs AI" onclick="create_game_with_bots()"/>
 	<input id="create_bot_button" type="submit" value="Create Game" onclick="create_game()"/>
 	</p>
+
+	<p id="editor_para" style="display:none">
+		<table>
+			<tr>
+			<td>
+			<div id="deck_div" class="deck_table">
+			</div>
+			</td>
+			<td>
+			<div id="collection_div" class="deck_table">
+			</div>
+			</td>
+			<td>
+			<div class="deck_table">
+				<table>
+
+				<tr>
+					<td> <canvas id="resource_canvas_g" width="128" height="32"></canvas> </td>
+
+					<td><input id="add_resource_button_g" type="submit" value="Add" onclick="modify_resources('g', 1)"/></td>
+					<td><input id="del_resource_button_g" type="submit" value="Remove" onclick="modify_resources('g', -1)"/></td>
+					</tr>
+				</tr>
+
+				<tr>
+					<td> <canvas id="resource_canvas_f" width="128" height="32"></canvas> </td>
+
+					<td><input id="add_resource_button_f" type="submit" value="Add" onclick="modify_resources('f', 1)"/></td>
+					<td><input id="del_resource_button_f" type="submit" value="Remove" onclick="modify_resources('f', -1)"/></td>
+					</tr>
+				</tr>
+
+				<tr>
+					<td> <canvas id="resource_canvas_b" width="128" height="32"></canvas> </td>
+
+					<td><input id="add_resource_button_b" type="submit" value="Add" onclick="modify_resources('b', 1)"/></td>
+					<td><input id="del_resource_button_b" type="submit" value="Remove" onclick="modify_resources('b', -1)"/></td>
+					</tr>
+				</tr>
+
+				<tr>
+					<td> <canvas id="resource_canvas_s" width="128" height="32"></canvas> </td>
+
+					<td><input id="add_resource_button_s" type="submit" value="Add" onclick="modify_resources('s', 1)"/></td>
+					<td><input id="del_resource_button_s" type="submit" value="Remove" onclick="modify_resources('s', -1)"/></td>
+					</tr>
+				</tr>
+
+				<tr>
+					<td> <canvas id="resource_canvas_h" width="128" height="32"></canvas> </td>
+
+					<td><input id="add_resource_button_h" type="submit" value="Add" onclick="modify_resources('h', 1)"/></td>
+					<td><input id="del_resource_button_h" type="submit" value="Remove" onclick="modify_resources('h', -1)"/></td>
+					</tr>
+				</tr>
+
+				</table>
+			</div>
+			</td>
+			</tr>
+		</table>
+	</p>
+
 	<p id="game_para" style="display:none">
 	<table id="main_table" cellpadding=0 cellspacing=0>
 	<tr><td>

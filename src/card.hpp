@@ -49,6 +49,7 @@ protected:
 class card
 {
 public:
+	static const std::vector<std::string>& get_all_cards();
 	static const_card_ptr create(wml::const_node_ptr node);
 	static const_card_ptr get(const std::string& id);
 
