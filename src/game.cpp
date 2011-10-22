@@ -245,7 +245,7 @@ void game::handle_message(int nplayer, const TiXmlElement& msg)
 		setup_game();
 		queue_message(wml::output_xml(write()));
 
-		ASSERT_GE(players_.size(), 1);
+		EXPECT_GE(players_.size(), 1);
 		queue_message(formatter() << "<new_turn player=\"" << players_.front().name << "\"></new_turn>\n");
 		state_ = STATE_PLAYING;
 		player_casting_ = player_turn_ = 0;
@@ -270,12 +270,12 @@ void game::handle_message(int nplayer, const TiXmlElement& msg)
 		const TiXmlElement* from = msg.FirstChildElement("from");
 		const TiXmlElement* to = msg.FirstChildElement("to");
 		const TiXmlElement* query_abilities = msg.FirstChildElement("query_abilities");
-		ASSERT_LOG(from && to, "message format of move illegal");
+		EXPECT_LOG(from && to, "message format of move illegal");
 		const hex::location from_loc(parse_loc_from_xml(*from));
 		const hex::location to_loc(parse_loc_from_xml(*to));
 
 		unit_ptr u = get_unit_at(from_loc);
-		ASSERT_LOG(u.get(), "Could not find unit at from loc");
+		EXPECT_LOG(u.get(), "Could not find unit at from loc");
 
 		hex::route_map routes;
 		hex::find_possible_moves(u->loc(), u->move(), unit_movement_cost_calculator(this, u), routes);
@@ -372,7 +372,7 @@ void game::end_turn(int nplayer, bool skipping)
 		spell_casting_passes_ = 0;
 	}
 
-	ASSERT_EQ(nplayer, player_casting_);
+	EXPECT_EQ(nplayer, player_casting_);
 
 	player_casting_ = player_casting_+1;
 	if(player_casting_ == players_.size()) {

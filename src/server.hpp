@@ -36,7 +36,7 @@ private:
 	void close_ajax(socket_ptr socket);
 
 	void send_msg(socket_ptr socket, const std::string& msg);
-	void handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes);
+	void handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes, boost::shared_ptr<std::string> buf);
 
 	void disconnect(socket_ptr socket);
 

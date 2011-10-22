@@ -187,6 +187,7 @@ void web_server::handle_message(socket_ptr socket, const std::string& msg)
 
 			const std::string content = sys::read_file(request.path);
 			if(!content.empty()) {
+				std::cerr << "SENDING FILE " << request.path << " -> " << content.size() << "\n";
 				send_msg(socket, content_type, content);
 			} else {
 				send_404(socket);
@@ -245,9 +246,9 @@ void web_server::handle_message(socket_ptr socket, const std::string& msg)
 	}
 }
 
-void web_server::handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes, size_t max_bytes)
+void web_server::handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes, size_t max_bytes, boost::shared_ptr<std::string> buf)
 {
-	std::cerr << "SENT: " << nbytes << " / " << max_bytes << "\n";
+	std::cerr << "SENT: " << nbytes << " / " << max_bytes << " " << e << "\n";
 		std::cerr << "CLOSESOCKF\n";
 	if(nbytes == max_bytes) {
 		disconnect(socket);
@@ -263,22 +264,21 @@ void web_server::disconnect(socket_ptr socket)
 void web_server::send_msg(socket_ptr socket, const std::string& type, const std::string& msg)
 {
 	char buf[4096];
-	sprintf(buf, "HTTP/1.1 200 OK\nDate: Tue, 20 Sep 2011 21:00:00 GMT\nConnection: close\nServer: Wizard/1.0\nAccept-Ranges: bytes\nContent-Type: %s\nContent-Length: %d\nLast-Modified: Tue, 20 Sep 2011 10:00:00 GMT\n\n", type.c_str(), msg.size());
+	sprintf(buf, "HTTP/1.1 200 OK\nDate: Tue, 20 Sep 2011 21:00:00 GMT\nConnection: close\nServer: Wizard/1.0\nAccept-Ranges: none\nContent-Type: %s\nLast-Modified: Tue, 20 Sep 2011 10:00:00 GMT\n\n", type.c_str());
 
-	std::string str(buf);
-	str += msg;
+	boost::shared_ptr<std::string> str(new std::string(buf));
+	*str += msg;
 
-	boost::asio::async_write(*socket, boost::asio::buffer(str),
-	                         boost::bind(&web_server::handle_send, this, socket, _1, _2, str.size()));
+	boost::asio::async_write(*socket, boost::asio::buffer(*str),
+	                         boost::bind(&web_server::handle_send, this, socket, _1, _2, str->size(), str));
 }
 
 void web_server::send_404(socket_ptr socket)
 {
 	char buf[4096];
-	sprintf(buf, "HTTP/1.1 404 NOT FOUND\nDate: Tue, 20 Sep 2011 21:00:00 GMT\nConnection: close\nServer: Wizard/1.0\nAccept-Ranges: bytes\n\n");
-	std::string str(buf);
-	std::cerr << "SENDING 404:" << str << "\n";
-	boost::asio::async_write(*socket, boost::asio::buffer(str),
-                boost::bind(&web_server::handle_send, this, socket, _1, _2, str.size()));
+	sprintf(buf, "HTTP/1.1 404 NOT FOUND\nDate: Tue, 20 Sep 2011 21:00:00 GMT\nConnection: close\nServer: Wizard/1.0\nAccept-Ranges: none\n\n");
+	boost::shared_ptr<std::string> str(new std::string(buf));
+	boost::asio::async_write(*socket, boost::asio::buffer(*str),
+                boost::bind(&web_server::handle_send, this, socket, _1, _2, str->size(), str));
 
 }

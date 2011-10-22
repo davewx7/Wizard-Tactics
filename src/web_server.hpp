@@ -26,7 +26,7 @@ private:
 	void send_msg(socket_ptr socket, const std::string& type, const std::string& msg);
 	void send_404(socket_ptr socket);
 
-	void handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes, size_t max_bytes);
+	void handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes, size_t max_bytes, boost::shared_ptr<std::string> buf);
 
 	void disconnect(socket_ptr socket);
 

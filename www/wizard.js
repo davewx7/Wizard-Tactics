@@ -302,6 +302,7 @@ function load_cached_image(key) {
 	img.src = data_url + 'wizard-images/' + img.key;
 	img.onload = function() {
 		images_cache[img.key] = img;
+		on_file_completed_download(img.key);
 	};
 
 	image_store.push(img);
@@ -577,6 +578,7 @@ function draw_spell(spell) {
 
 	var img = images_cache['card.png'];
 	if(!img) {
+		window.setTimeout(function(element) {draw_spell(this);}.bind(spell), 50);
 		return;
 	}
 
@@ -647,21 +649,21 @@ function draw_unit_hitpoints(canvas, unit, x, y) {
 	canvas.strokeStyle = '#000000';
 	canvas.fillStyle = '#000000';
 
-	canvas.fillRect(x-1, y, 1, unit.life*5);
+	canvas.fillRect(x-1, y, 1, unit.effective_life*5);
 	canvas.fillRect(x+1, y-2, BarWidth, 1);
-	canvas.fillRect(x+1, y+unit.life*5+1, BarWidth, 1);
-	canvas.fillRect(x+1, y, BarWidth, (unit.life-unit.damage_taken)*5);
+	canvas.fillRect(x+1, y+unit.effective_life*5+1, BarWidth, 1);
+	canvas.fillRect(x+1, y, BarWidth, unit.effective_life*5);
 
 	canvas.strokeStyle = '#ffc20e';
 	canvas.fillStyle = '#ffc20e';
-	canvas.fillRect(x, y, 1, unit.life*5);
-	canvas.fillRect(x+BarWidth+1, y, 1, unit.life*5);
+	canvas.fillRect(x, y, 1, unit.effective_life*5);
+	canvas.fillRect(x+BarWidth+1, y, 1, unit.effective_life*5);
 	canvas.fillRect(x, y-1, BarWidth+2, 1);
-	canvas.fillRect(x, y+unit.life*5, BarWidth+2, 1);
+	canvas.fillRect(x, y+unit.effective_life*5, BarWidth+2, 1);
 
 	canvas.strokeStyle = '#4c1711';
 	canvas.fillStyle = '#4c1711';
-	canvas.fillRect(x+BarWidth+2, y, 1, unit.life*5);
+	canvas.fillRect(x+BarWidth+2, y, 1, unit.effective_life*5);
 
 	if(unit.side == 0) {
 		canvas.strokeStyle = '#ef343e';
@@ -671,12 +673,12 @@ function draw_unit_hitpoints(canvas, unit, x, y) {
 		canvas.fillStyle = '#3e34ef';
 	}
 
-	canvas.fillRect(x+1, y + unit.damage_taken*5, BarWidth, (unit.life - unit.damage_taken)*5);
+	canvas.fillRect(x+1, y + unit.damage_taken*5, BarWidth, (unit.effective_life - unit.damage_taken)*5);
 
 	canvas.strokeStyle = '#000000';
 	canvas.fillStyle = '#000000';
 	canvas.globalAlpha = 0.5;
-	for(var n = 1; n < unit.life; ++n) {
+	for(var n = 1; n < unit.effective_life; ++n) {
 		canvas.fillRect(x+1, y + n*5 - 1, BarWidth, 2);
 	}
 
@@ -744,13 +746,13 @@ function Unit(element) {
 	this.life = parseInt(element.getAttribute('life'));
 	this.effective_life = parseInt(element.getAttribute('effective_life'));
 	if(!this.effective_life) {
-		this.effective_life = life;
+		this.effective_life = this.life;
 	}
 	this.damage_taken = parseInt(element.getAttribute('damage_taken'));
 	this.armor = parseInt(element.getAttribute('armor'));
 	this.effective_armor = parseInt(element.getAttribute('effective_armor'));
 	if(!this.effective_armor) {
-		this.effective_armor = armor;
+		this.effective_armor = this.armor;
 	}
 	this.move = parseInt(element.getAttribute('move'));
 	this.has_moved = element.getAttribute('has_moved') == 'yes';
@@ -1328,6 +1330,9 @@ function handle_player_info(element) {
 		add_button.style.display = total_num_resources < 10 ? 'block' : 'none';
 		remove_button.style.display = num_resources > 0 ? 'block' : 'none';
 	}
+
+	document.getElementById('deck_title_label').innerHTML = '<h3>Spellbook</h3>' + spells.length + '/10 spells';
+	document.getElementById('collection_title_label').innerHTML = '<h3>Library</h3>' + collection.length + ' spells';
 }
 
 function modify_resources(resource, delta) {
@@ -1355,11 +1360,6 @@ function process_response(response) {
 		ability_using = null;
 		unit_casting = null;
 		clear_choose_ability_info();
-
-		//make sure we are showing the main game table.
-		document.getElementById('game_para').style.display = 'block';
-		document.getElementById('lobby_para').style.display = 'none';
-		document.getElementById('editor_para').style.display = 'none';
 
 		game = new Game(element);
 		draw_map_info = []; //clear draw map info so it's rebuilt.
@@ -1423,6 +1423,11 @@ function process_response(response) {
 				current_spells_table = spells_table;
 			}
 		}
+
+		//make sure we are showing the main game table.
+		document.getElementById('game_para').style.display = 'block';
+		document.getElementById('lobby_para').style.display = 'none';
+		document.getElementById('editor_para').style.display = 'none';
 	} else if(element.tagName == 'game_created' || element.tagName == 'join_game') {
 		if(element.tagName == 'join_game') {
 			players_signed_up_for_game++;
@@ -1814,10 +1819,18 @@ function on_file_completed_download(fname) {
 	}
 }
 
+function preload_image(key) {
+	load_cached_image(key);
+	files_needed_to_start_game[key] = 1;
+}
+
 function load_cached_images() {
-	load_cached_image('tired.png');
-	load_cached_image('card.png');
-	load_cached_image('towers.png');
+	preload_image('tired.png');
+	preload_image('status-icons.png');
+	preload_image('magic-icons.png');
+	preload_image('card.png');
+	preload_image('towers.png');
+	preload_image('units/units.png');
 
 	var url_prefix = data_url + 'wizard-data/';
 

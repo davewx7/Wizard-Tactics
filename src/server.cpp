@@ -122,7 +122,10 @@ void server::handle_message(socket_ptr socket, const std::vector<char>& msg)
 
 void server::handle_message(socket_ptr socket, const TiXmlElement& node)
 {
-	handle_message_internal(socket, node);
+	try {
+		handle_message_internal(socket, node);
+	} catch(assert_fail_exception&) {
+	}
 
 	socket_info& info = connections_[socket];
 	if(info.ajax_connection) {
@@ -305,12 +308,14 @@ void server::send_msg(socket_ptr socket, const std::string& msg)
 		sprintf(buf, "HTTP/1.1 200 OK\nDate: Tue, 20 Sep 2011 21:00:00 GMT\nConnection: close\nServer: Wizard/1.0\nAccept-Ranges: bytes\nContent-Type: text/xml\nContent-Length: %d\nLast-Modified: Tue, 20 Sep 2011 10:00:00 GMT\n\n", msg.size());
 		header = buf;
 	}
-	boost::asio::async_write(*socket, boost::asio::buffer(header.empty() ? msg : (header + msg)),
-			                         boost::bind(&server::handle_send, this, socket, _1, _2));
-	std::cerr << "SEND MSG: " << (header + msg) << "\n";
+
+	boost::shared_ptr<std::string> str_buf(new std::string(header.empty() ? msg : (header + msg)));
+	boost::asio::async_write(*socket, boost::asio::buffer(*str_buf),
+			                         boost::bind(&server::handle_send, this, socket, _1, _2, str_buf));
+	std::cerr << "SEND MSG: " << *str_buf << "\n";
 }
 
-void server::handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes)
+void server::handle_send(socket_ptr socket, const boost::system::error_code& e, size_t nbytes, boost::shared_ptr<std::string> buf)
 {
 	if(e) {
 		disconnect(socket);
