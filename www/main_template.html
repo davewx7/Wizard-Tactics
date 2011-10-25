@@ -13,6 +13,11 @@
 </head>
 
 	<body onload="init_wizard(); set_user_id('__USERID__'); load_game_data(); load_cached_images();">
+	<p id="pregame_para" style="display:none">
+	<label id="waiting_game_label">Waiting for players...</label><br>
+	<input id="cancel_game_button" type="submit" value="Cancel Game" onclick="resign_game()"/>
+	</p>
+
 	<p id="lobby_para" style="display:none">
 
 	<input id="create_bot_button" type="submit" value="Play vs AI" onclick="create_game_with_bots()"/>

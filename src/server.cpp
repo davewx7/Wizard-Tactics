@@ -59,7 +59,7 @@ server::server(boost::asio::io_service& io_service)
 
 void server::start_accept()
 {
-	socket_ptr socket(new tcp::socket(acceptor_.io_service()));
+	socket_ptr socket(new tcp::socket(acceptor_.get_io_service()));
 	acceptor_.async_accept(*socket, boost::bind(&server::handle_accept, this, socket, boost::asio::placeholders::error));
 }
 
@@ -148,11 +148,14 @@ void server::handle_message_internal(socket_ptr socket, const TiXmlElement& node
 	} else if(name == "login") {
 		info.nick = node.Attribute("name");
 	} else if(name == "enter_lobby") {
-		foreach(game_info_ptr g, games_) {
+		foreach(game_info_ptr& g, games_) {
 			if(std::count(g->clients.begin(), g->clients.end(), info.nick)) {
 				g->clients.erase(std::remove(g->clients.begin(), g->clients.end(), info.nick), g->clients.end());
+				g.reset();
 			}
 		}
+
+		games_.erase(std::remove(games_.begin(), games_.end(), game_info_ptr()), games_.end());
 
 		std::string msg;
 		create_lobby_msg(msg);

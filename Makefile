@@ -5,11 +5,11 @@ client_objects = ai_player.o button.o card.o city.o client.o client_network.o cl
 	ccache g++ `sdl-config --cflags` -fno-inline-functions -g $(OPT) -DTIXML_USE_STL=1 -D_GNU_SOURCE=1 -D_REENTRANT -DIMPLEMENT_SAVE_PNG=1 -Wnon-virtual-dtor -Wreturn-type -fthreadsafe-statics -c $<
 
 game: $(objects)
-	ccache g++ `sdl-config --libs` -fno-inline-functions -g $(OPT) -L/sw/lib -L/usr/X11R6/lib -lX11 -DTIXML_USE_STL=1 -D_GNU_SOURCE=1 -D_REENTRANT -Wnon-virtual-dtor -Wreturn-type -L/usr/lib `sdl-config --libs` -lSDLmain -lSDL -lGL -lGLU -lSDL_image -lSDL_ttf -lSDL_mixer -lboost_regex-mt -lboost_system-mt -lboost_thread-mt -lboost_iostreams-mt -fthreadsafe-statics $(objects) -o game
+	ccache g++ `sdl-config --libs` -fno-inline-functions -g $(OPT) -L/sw/lib -L/usr/X11R6/lib -lX11 -DTIXML_USE_STL=1 -D_GNU_SOURCE=1 -D_REENTRANT -Wnon-virtual-dtor -Wreturn-type -L/usr/lib $(objects) `sdl-config --libs` -lSDLmain -lSDL -lGL -lGLU -lSDL_image -lSDL_ttf -lSDL_mixer -lboost_regex-mt -lboost_system-mt -lboost_thread-mt -lboost_iostreams-mt -lpthread -lz -fthreadsafe-statics -o game
 
 
 client: $(client_objects)
-	g++ -DCLIENT=1 `sdl-config --libs` -fno-inline-functions -g $(OPT) -L/sw/lib -L/usr/X11R6/lib -lX11 -DTIXML_USE_STL=1 -D_GNU_SOURCE=1 -D_REENTRANT -Wnon-virtual-dtor -Wreturn-type -L/usr/lib `sdl-config --libs` -lpng -lSDLmain -lSDL -lGL -lGLU -lGLEW -lSDL_image -lSDL_ttf -lSDL_mixer -lboost_regex-mt -lboost_system-mt -lboost_thread-mt -lboost_iostreams-mt -fthreadsafe-statics $(client_objects) -o client
+	ccache g++ -DCLIENT=1 `sdl-config --libs` -fno-inline-functions -g $(OPT) -L/sw/lib -L/usr/X11R6/lib -lX11 -DTIXML_USE_STL=1 -D_GNU_SOURCE=1 -D_REENTRANT -Wnon-virtual-dtor -Wreturn-type -L/usr/lib $(client_objects) `sdl-config --libs` -lpng -lSDLmain -lSDL -lGL -lGLU -lGLEW -lSDL_image -lSDL_ttf -lSDL_mixer -lboost_regex-mt -lboost_system-mt -lboost_thread-mt -lboost_iostreams-mt -lz -fthreadsafe-statics -o client
 
 clean:
 	rm *.o game client

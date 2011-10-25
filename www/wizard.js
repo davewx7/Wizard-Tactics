@@ -1216,7 +1216,6 @@ function handle_player_info(element) {
 	var spells = element.getAttribute('spells').split(',');
 
 	var deck_rows = {};
-	var collection_rows = {};
 
 	for(var n = 0; n != spells.length; ++n) {
 		var spell = spells_index[spells[n]];
@@ -1247,10 +1246,15 @@ function handle_player_info(element) {
 	}
 
 	var collection = element.getAttribute('collection').split(',');
+	var row = document.createElement('tr');
+	var ncells_in_row = 0;
 	for(var n = 0; n != collection.length; ++n) {
+		if(deck_rows[collection[n]]) {
+			continue;
+		}
+
 		var spell = spells_index[collection[n]];
 
-		var row = document.createElement('tr');
 		var cell = document.createElement('td');
 		var canvas = document.createElement('canvas');
 		canvas.width = 108;
@@ -1270,17 +1274,17 @@ function handle_player_info(element) {
 
 		draw_spell(spell_info);
 
-		collection_table.appendChild(row);
+		++ncells_in_row;
 
-		collection_rows[collection[n]] = row;
+		if(ncells_in_row >= 3) {
+			collection_table.appendChild(row);
+			row = document.createElement('tr');
+			ncells_in_row = 0;
+		}
 	}
 
-	for(var key in collection_rows) {
-		if(deck_rows[key]) {
-			collection_rows[key].style.display = 'none'
-		} else {
-			collection_rows[key].style.display = 'block'
-		}
+	if(ncells_in_row > 0) {
+		collection_table.appendChild(row);
 	}
 
 	deck_div.appendChild(deck_table);
@@ -1428,6 +1432,7 @@ function process_response(response) {
 		document.getElementById('game_para').style.display = 'block';
 		document.getElementById('lobby_para').style.display = 'none';
 		document.getElementById('editor_para').style.display = 'none';
+		document.getElementById('pregame_para').style.display = 'none';
 	} else if(element.tagName == 'game_created' || element.tagName == 'join_game') {
 		if(element.tagName == 'join_game') {
 			players_signed_up_for_game++;
@@ -1436,7 +1441,11 @@ function process_response(response) {
 
 		if(players_signed_up_for_game >= 1) {
 			send_xml('<commands><setup/><spells resource_gain="0,0,0,0,10,0" spells="ilia_shield_maiden, duelist_of_tenser"/></commands>');
-			//Spell-heavy deck:		<commands><setup/><spells resource_gain="0,0,10,0,0,0" spells="dark_adept,skeleton,vampire,vampire_bat,terror,flesh_wound,fireball"/></commands>
+		} else {
+			document.getElementById('game_para').style.display = 'none';
+			document.getElementById('lobby_para').style.display = 'none';
+			document.getElementById('editor_para').style.display = 'none';
+			document.getElementById('pregame_para').style.display = 'block';
 		}
 	} else if(element.tagName == 'select_unit_move') {
 		set_unit_move_info(new UnitMoveInfo(element));
@@ -1707,6 +1716,7 @@ function resign_game() {
 	draw_map_info = [];
 	draw_map_info_nobg = [];
 	document.getElementById('game_para').style.display = 'none';
+	document.getElementById('pregame_para').style.display = 'none';
 	send_xml('<enter_lobby/>');
 }
 
